@@ -15,6 +15,8 @@ final class AppState: ObservableObject {
     @Published var selectedNoteURL: URL?
     @Published var currentContent: String = ""
     @Published var currentNoteID: String?
+    @Published var currentNoteCreated: Date?
+    @Published var currentNoteModified: Date?
     @Published var isPreviewMode: Bool = false
     @Published var showSidebar: Bool = true
     @Published var showBacklinks: Bool = false
@@ -113,8 +115,12 @@ final class AppState: ObservableObject {
             currentContent = content
             selectedNoteURL = url
 
-            // Assign unique ID lazily
-            currentNoteID = NoteMetadataService.shared.ensureID(for: url)
+            // Assign unique ID lazily and load dates
+            let meta = NoteMetadataService.shared.metadata(for: url)
+            currentNoteID = meta.id
+            currentNoteCreated = meta.created
+            let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+            currentNoteModified = attrs?[.modificationDate] as? Date
 
             // Restore mode preference
             let modeKey = "mode-\(url.lastPathComponent)"

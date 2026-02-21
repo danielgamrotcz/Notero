@@ -1,5 +1,36 @@
 import Foundation
 
+enum NoteSortOrder: String, CaseIterable {
+    case nameAscending = "nameAsc"
+    case nameDescending = "nameDesc"
+    case modifiedNewest = "modifiedNewest"
+    case modifiedOldest = "modifiedOldest"
+    case createdNewest = "createdNewest"
+    case createdOldest = "createdOldest"
+
+    var label: String {
+        switch self {
+        case .nameAscending:  return "Name (A → Z)"
+        case .nameDescending: return "Name (Z → A)"
+        case .modifiedNewest: return "Modified (newest)"
+        case .modifiedOldest: return "Modified (oldest)"
+        case .createdNewest:  return "Created (newest)"
+        case .createdOldest:  return "Created (oldest)"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .nameAscending:  return "textformat.abc"
+        case .nameDescending: return "textformat.abc"
+        case .modifiedNewest: return "clock"
+        case .modifiedOldest: return "clock"
+        case .createdNewest:  return "calendar"
+        case .createdOldest:  return "calendar"
+        }
+    }
+}
+
 enum FileTreeNode: Identifiable, Hashable {
     case folder(FolderNode)
     case file(FileNode)
@@ -57,9 +88,11 @@ struct FileNode: Hashable {
     let url: URL
     var name: String { url.deletingPathExtension().lastPathComponent }
     var modificationDate: Date
+    var createdDate: Date
 
-    init(url: URL, modificationDate: Date = Date()) {
+    init(url: URL, modificationDate: Date = Date(), createdDate: Date = Date()) {
         self.url = url
         self.modificationDate = modificationDate
+        self.createdDate = createdDate
     }
 }

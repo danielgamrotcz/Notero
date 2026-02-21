@@ -9,6 +9,7 @@ final class VaultManager: ObservableObject {
 
     private var fsEventStream: FSEventStreamRef?
     private let fileManager = FileManager.default
+    var currentSortOrder: NoteSortOrder = .nameAscending
 
     init() {
         if let savedPath = UserDefaults.standard.string(forKey: "vaultPath") {
@@ -37,13 +38,14 @@ final class VaultManager: ObservableObject {
         }
     }
 
-    func loadFileTree() {
-        fileTree = buildTree(at: vaultURL)
+    func loadFileTree(sortOrder: NoteSortOrder? = nil) {
+        if let sortOrder { currentSortOrder = sortOrder }
+        fileTree = buildTree(at: vaultURL, sortOrder: currentSortOrder)
     }
 
-    private func buildTree(at url: URL) -> [FileTreeNode] {
+    func buildTree(at url: URL, sortOrder: NoteSortOrder = .nameAscending) -> [FileTreeNode] {
         guard let contents = try? fileManager.contentsOfDirectory(
-            at: url, includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey],
+            at: url, includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey, .creationDateKey],
             options: [.skipsHiddenFiles]
         ) else { return [] }
 
@@ -51,20 +53,48 @@ final class VaultManager: ObservableObject {
         var files: [FileTreeNode] = []
 
         for itemURL in contents {
-            let resourceValues = try? itemURL.resourceValues(forKeys: [.isDirectoryKey, .contentModificationDateKey])
+            let resourceValues = try? itemURL.resourceValues(forKeys: [.isDirectoryKey, .contentModificationDateKey, .creationDateKey])
             let isDirectory = resourceValues?.isDirectory ?? false
 
             if isDirectory {
-                let children = buildTree(at: itemURL)
+                let children = buildTree(at: itemURL, sortOrder: sortOrder)
                 folders.append(.folder(FolderNode(url: itemURL, children: children)))
             } else if itemURL.pathExtension == "md" {
                 let modDate = resourceValues?.contentModificationDate ?? Date()
-                files.append(.file(FileNode(url: itemURL, modificationDate: modDate)))
+                // Use metadata created date if available, fall back to filesystem
+                let meta = NoteMetadataService.shared.metadata(for: itemURL)
+                let createdDate = meta.created
+                files.append(.file(FileNode(url: itemURL, modificationDate: modDate, createdDate: createdDate)))
             }
         }
 
         folders.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        files.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        switch sortOrder {
+        case .nameAscending:
+            files.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .nameDescending:
+            files.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedDescending }
+        case .modifiedNewest:
+            files.sort {
+                guard case .file(let a) = $0, case .file(let b) = $1 else { return false }
+                return a.modificationDate > b.modificationDate
+            }
+        case .modifiedOldest:
+            files.sort {
+                guard case .file(let a) = $0, case .file(let b) = $1 else { return false }
+                return a.modificationDate < b.modificationDate
+            }
+        case .createdNewest:
+            files.sort {
+                guard case .file(let a) = $0, case .file(let b) = $1 else { return false }
+                return a.createdDate > b.createdDate
+            }
+        case .createdOldest:
+            files.sort {
+                guard case .file(let a) = $0, case .file(let b) = $1 else { return false }
+                return a.createdDate < b.createdDate
+            }
+        }
 
         return folders + files
     }
@@ -217,9 +247,10 @@ final class VaultManager: ObservableObject {
         var context = FSEventStreamContext()
         context.info = Unmanaged.passUnretained(self).toOpaque()
 
-        let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+        let callback: FSEventStreamCallback = { _, info, numEvents, eventPaths, _, _ in
             guard let info = info else { return }
             let manager = Unmanaged<VaultManager>.fromOpaque(info).takeUnretainedValue()
+            print("[VaultManager] FSEvent fired, \(numEvents) events")
             Task { @MainActor in
                 manager.loadFileTree()
             }
@@ -228,8 +259,12 @@ final class VaultManager: ObservableObject {
         fsEventStream = FSEventStreamCreate(
             nil, callback, &context, pathsToWatch,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
-            1.0,
-            FSEventStreamCreateFlags(kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents)
+            0.5,
+            FSEventStreamCreateFlags(
+                kFSEventStreamCreateFlagUseCFTypes |
+                kFSEventStreamCreateFlagFileEvents |
+                kFSEventStreamCreateFlagNoDefer
+            )
         )
 
         if let stream = fsEventStream {

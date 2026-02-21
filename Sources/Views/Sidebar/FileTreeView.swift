@@ -31,6 +31,7 @@ struct FileTreeView: View {
                 .onTapGesture { appState.openNote(url: fileNode.url) }
                 .contextMenu { fileContextMenu(fileNode: fileNode) }
                 .draggable(fileNode.url.absoluteString)
+                .help("Created \(fileNode.createdDate.formatted(.dateTime.month(.abbreviated).day().year()))\nModified \(relativeTime(fileNode.modificationDate))")
             }
         }
     }
@@ -60,6 +61,16 @@ struct FileTreeView: View {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(link, forType: .string)
         }
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+        if interval < 60 { return "just now" }
+        if interval < 3600 { return "\(Int(interval / 60)) min ago" }
+        if Calendar.current.isDateInToday(date) { return "today at \(date.formatted(.dateTime.hour().minute()))" }
+        if Calendar.current.isDateInYesterday(date) { return "yesterday at \(date.formatted(.dateTime.hour().minute()))" }
+        return date.formatted(.dateTime.month(.abbreviated).day().year())
     }
 
     @ViewBuilder
