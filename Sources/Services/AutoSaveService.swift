@@ -14,6 +14,7 @@ final class AutoSaveService: ObservableObject {
     private var saveTask: Task<Void, Never>?
     private weak var vaultManager: VaultManager?
     private var delay: TimeInterval
+    var onDidSave: ((String, URL) -> Void)?
 
     init(vaultManager: VaultManager, delay: TimeInterval = 1.0) {
         self.vaultManager = vaultManager
@@ -42,5 +43,6 @@ final class AutoSaveService: ObservableObject {
         saveStatus = .saving
         vaultManager?.saveNote(content: content, to: url)
         saveStatus = .saved(Date())
+        onDidSave?(content, url)
     }
 }

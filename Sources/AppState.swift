@@ -90,6 +90,10 @@ final class AppState: ObservableObject {
         setupSettingsSync()
         syncVaultPathToAppGroup()
 
+        autoSaveService.onDidSave = { [weak self] content, url in
+            self?.autoTitleRenameIfNeeded(content: content, url: url)
+        }
+
         Task {
             await searchService.buildIndex()
         }
