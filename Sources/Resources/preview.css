@@ -1,0 +1,104 @@
+:root {
+    color-scheme: light dark;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 20px 40px;
+}
+
+@media (prefers-color-scheme: dark) {
+    body { background: #1C1C1E; color: #F5F5F7; }
+    a { color: #6CB4EE; }
+    blockquote { border-color: #555; color: #aaa; }
+    code { background: #2C2C2E; }
+    pre { background: #2C2C2E; }
+    table { border-color: #444; }
+    th, td { border-color: #444; }
+    hr { border-color: #444; }
+}
+
+@media (prefers-color-scheme: light) {
+    body { background: #FFFFFF; color: #1D1D1F; }
+    a { color: #0066CC; }
+    blockquote { border-color: #ddd; color: #666; }
+    code { background: #f4f4f4; }
+    pre { background: #f4f4f4; }
+    table { border-color: #ddd; }
+    th, td { border-color: #ddd; }
+}
+
+h1, h2, h3 {
+    font-weight: 600;
+    margin-top: 1.5em;
+}
+
+h1 { font-size: 1.8em; }
+h2 { font-size: 1.4em; }
+h3 { font-size: 1.2em; }
+
+code {
+    font-family: 'SF Mono', Menlo, monospace;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+pre {
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+pre code {
+    padding: 0;
+    background: none;
+}
+
+blockquote {
+    border-left: 3px solid;
+    padding-left: 16px;
+    margin-left: 0;
+    font-style: italic;
+}
+
+img {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+th, td {
+    border: 1px solid;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+th { font-weight: 600; }
+
+hr {
+    border: none;
+    border-top: 1px solid;
+    margin: 2em 0;
+}
+
+input[type="checkbox"] {
+    margin-right: 6px;
+}
+
+label {
+    cursor: pointer;
+}
+
+a[data-wikilink] {
+    text-decoration: underline dotted;
+}

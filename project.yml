@@ -1,0 +1,52 @@
+name: Notero
+options:
+  bundleIdPrefix: cz.danielgamrot
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_IDENTITY: "-"
+
+targets:
+  Notero:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+    resources:
+      - path: Sources/Resources/Assets.xcassets
+      - path: Sources/Resources/preview.css
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: cz.danielgamrot.Notero
+        INFOPLIST_KEY_CFBundleDisplayName: Notero
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_HARDENED_RUNTIME: NO
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        COMBINE_HIDPI_IMAGES: YES
+        CODE_SIGN_ENTITLEMENTS: Notero.entitlements
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
+
+  NoteroTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: Notero
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: cz.danielgamrot.NoteroTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Notero.app/Contents/MacOS/Notero"
+        BUNDLE_LOADER: "$(TEST_HOST)"
