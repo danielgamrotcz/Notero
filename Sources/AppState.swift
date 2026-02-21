@@ -29,6 +29,7 @@ final class AppState: ObservableObject {
     @Published var defaultNoteName: String
     @Published var autoSaveDelay: Double
     @Published var spellCheckEnabled: Bool
+    @Published var autoTitleFromH1: Bool
     @Published var claudeModel: String
     @Published var ollamaServerURL: String
     @Published var ollamaModel: String
@@ -50,6 +51,7 @@ final class AppState: ObservableObject {
         self.defaultNoteName = defaults.string(forKey: "defaultNoteName") ?? "Untitled"
         self.autoSaveDelay = defaults.double(forKey: "autoSaveDelay").nonZero ?? 1.0
         self.spellCheckEnabled = defaults.bool(forKey: "spellCheckEnabled")
+        self.autoTitleFromH1 = defaults.object(forKey: "autoTitleFromH1") == nil ? true : defaults.bool(forKey: "autoTitleFromH1")
         self.showLineNumbers = defaults.bool(forKey: "showLineNumbers")
         self.fontSize = CGFloat(defaults.double(forKey: "fontSize").nonZero ?? 14)
         self.claudeModel = defaults.string(forKey: "claudeModel") ?? "claude-sonnet-4-6"
@@ -80,6 +82,7 @@ final class AppState: ObservableObject {
             self?.autoSaveService.updateDelay(val)
         }.store(in: &cancellables)
         $spellCheckEnabled.dropFirst().sink { UserDefaults.standard.set($0, forKey: "spellCheckEnabled") }.store(in: &cancellables)
+        $autoTitleFromH1.dropFirst().sink { UserDefaults.standard.set($0, forKey: "autoTitleFromH1") }.store(in: &cancellables)
         $showLineNumbers.dropFirst().sink { UserDefaults.standard.set($0, forKey: "showLineNumbers") }.store(in: &cancellables)
         $fontSize.dropFirst().sink { UserDefaults.standard.set(Double($0), forKey: "fontSize") }.store(in: &cancellables)
         $claudeModel.dropFirst().sink { UserDefaults.standard.set($0, forKey: "claudeModel") }.store(in: &cancellables)
@@ -136,6 +139,67 @@ final class AppState: ObservableObject {
         autoSaveService.saveImmediately(content: currentContent, to: url)
         Task {
             await searchService.reindex(url: url)
+        }
+        autoTitleRenameIfNeeded(content: currentContent, url: url)
+    }
+
+    private func autoTitleRenameIfNeeded(content: String, url: URL) {
+        guard autoTitleFromH1 else { return }
+
+        let firstLine = content.components(separatedBy: .newlines).first ?? ""
+        let trimmed = firstLine.trimmingCharacters(in: .whitespaces)
+        guard let match = trimmed.range(of: "^#\\s+(.+)$", options: .regularExpression) else { return }
+
+        let titleStart = trimmed.index(trimmed.startIndex, offsetBy: trimmed.hasPrefix("# ") ? 2 : 0)
+        var title = String(trimmed[titleStart...]).trimmingCharacters(in: .whitespaces)
+
+        // Strip remaining Markdown
+        title = title.replacingOccurrences(of: "\\*+", with: "", options: .regularExpression)
+        title = title.replacingOccurrences(of: "`", with: "")
+        title = title.replacingOccurrences(of: "[\\[\\]]", with: "", options: .regularExpression)
+
+        // Replace invalid filename chars
+        let invalidChars = CharacterSet(charactersIn: ":/\\?*\"<>|")
+        title = title.unicodeScalars.map { invalidChars.contains($0) ? "-" : String($0) }.joined()
+
+        // Collapse whitespace/hyphens and trim
+        title = title.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        title = title.replacingOccurrences(of: "-{2,}", with: "-", options: .regularExpression)
+        title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !title.isEmpty else { return }
+
+        // Truncate at word boundary, max 80 chars
+        if title.count > 80 {
+            title = String(title.prefix(80))
+            if let lastSpace = title.lastIndex(of: " ") {
+                title = String(title[..<lastSpace])
+            }
+        }
+
+        let newFilename = "\(title).md"
+        let currentFilename = url.lastPathComponent
+
+        guard newFilename != currentFilename else { return }
+
+        // Check for conflicts
+        var targetURL = url.deletingLastPathComponent().appendingPathComponent(newFilename)
+        if FileManager.default.fileExists(atPath: targetURL.path) && targetURL != url {
+            var counter = 2
+            while FileManager.default.fileExists(atPath: targetURL.path) {
+                targetURL = url.deletingLastPathComponent().appendingPathComponent("\(title) \(counter).md")
+                counter += 1
+            }
+        }
+
+        // Perform rename
+        do {
+            try FileManager.default.moveItem(at: url, to: targetURL)
+            selectedNoteURL = targetURL
+            NoteMetadataService.shared.updatePath(from: url, to: targetURL)
+            vaultManager.loadFileTree()
+        } catch {
+            Log.vault.error("Auto-title rename failed: \(error.localizedDescription)")
         }
     }
 
