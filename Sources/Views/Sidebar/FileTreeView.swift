@@ -11,23 +11,22 @@ struct FileTreeView: View {
                 DisclosureGroup {
                     FileTreeView(nodes: folderNode.children)
                         .environmentObject(appState)
+                        .padding(.leading, 4)
                 } label: {
                     FileTreeRowView(node: node, isSelected: false)
-                        .help("\(folderNode.noteCount) notes")
                 }
                 .contextMenu { folderContextMenu(folder: folderNode) }
 
             case .file(let fileNode):
+                let selected = appState.selectedNoteURL == fileNode.url
                 FileTreeRowView(
                     node: node,
-                    isSelected: appState.selectedNoteURL == fileNode.url
+                    isSelected: selected
                 )
                 .background(
-                    appState.selectedNoteURL == fileNode.url
-                        ? Color.accentColor.opacity(0.15)
-                        : Color.clear
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(selected ? Color.accentColor : Color.clear)
                 )
-                .cornerRadius(4)
                 .onTapGesture { appState.openNote(url: fileNode.url) }
                 .contextMenu { fileContextMenu(fileNode: fileNode) }
                 .draggable(fileNode.url.absoluteString)

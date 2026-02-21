@@ -112,25 +112,25 @@ struct SidebarView: View {
             ForEach(appState.pinnedNotesManager.pinnedNotes, id: \.self) { path in
                 let noteURL = appState.vaultManager.vaultURL.appendingPathComponent(path)
                 let noteName = (path as NSString).deletingPathExtension.components(separatedBy: "/").last ?? path
-                HStack(spacing: 6) {
-                    Image(systemName: "doc.text")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 13))
+                let selected = appState.selectedNoteURL == noteURL
+                HStack(spacing: 7) {
+                    Image(systemName: "pin.fill")
+                        .foregroundColor(selected ? .white : .accentColor)
+                        .font(.system(size: 11))
+                        .frame(width: 16, alignment: .center)
                     Text(noteName)
                         .lineLimit(1)
+                        .truncationMode(.middle)
                         .font(.system(size: 13))
+                        .foregroundColor(selected ? .white : .primary)
                     Spacer()
-                    Image(systemName: "pin.fill")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
                 }
-                .padding(.vertical, 2)
-                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
                 .background(
-                    appState.selectedNoteURL == noteURL
-                        ? Color.accentColor.opacity(0.15) : Color.clear
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(selected ? Color.accentColor : Color.clear)
                 )
-                .cornerRadius(4)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     appState.openNote(url: noteURL)
@@ -159,25 +159,25 @@ struct SidebarView: View {
             ForEach(appState.favoritesManager.orderedFavorites, id: \.self) { path in
                 let noteURL = appState.vaultManager.vaultURL.appendingPathComponent(path)
                 let noteName = (path as NSString).deletingPathExtension.components(separatedBy: "/").last ?? path
-                HStack(spacing: 6) {
-                    Image(systemName: "doc.text")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 13))
+                let selected = appState.selectedNoteURL == noteURL
+                HStack(spacing: 7) {
+                    Image(systemName: "star.fill")
+                        .foregroundColor(selected ? .white : .yellow)
+                        .font(.system(size: 11))
+                        .frame(width: 16, alignment: .center)
                     Text(noteName)
                         .lineLimit(1)
+                        .truncationMode(.middle)
                         .font(.system(size: 13))
+                        .foregroundColor(selected ? .white : .primary)
                     Spacer()
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 9))
-                        .foregroundColor(.yellow)
                 }
-                .padding(.vertical, 2)
-                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
                 .background(
-                    appState.selectedNoteURL == noteURL
-                        ? Color.accentColor.opacity(0.15) : Color.clear
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(selected ? Color.accentColor : Color.clear)
                 )
-                .cornerRadius(4)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     appState.openNote(url: noteURL)
