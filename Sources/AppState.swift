@@ -24,6 +24,8 @@ final class AppState: ObservableObject {
     @Published var showBacklinks: Bool = false
     @Published var showCommandPalette: Bool = false
     @Published var showQuickOpen: Bool = false
+    @Published var showFindReplace: Bool = false
+    @Published var showFindReplaceWithReplace: Bool = false
     @Published var showLineNumbers: Bool = false
     @Published var fontSize: CGFloat = 14
     @Published var aiStatus: String = ""

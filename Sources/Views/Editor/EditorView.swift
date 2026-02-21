@@ -42,6 +42,16 @@ struct EditorView: View {
                     backlinksPanel
                 }
 
+                // Find/Replace panel
+                if appState.showFindReplace {
+                    FindReplaceView(
+                        content: $appState.currentContent,
+                        isVisible: $appState.showFindReplace,
+                        showReplace: appState.showFindReplaceWithReplace
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
                 // Status bar
                 StatusBarView()
                     .environmentObject(appState)

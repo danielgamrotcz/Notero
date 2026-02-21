@@ -20,6 +20,7 @@
 		2A615474FBCB2C9C6C4DE22B /* PinnedNotesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92198BE7E70BE34818243709 /* PinnedNotesManager.swift */; };
 		2F77BDC8C73319792905BA59 /* NoteFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA655E6E8A64242C50735CA8 /* NoteFile.swift */; };
 		2F7A79E527640BBCDEA4E9F6 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E6356A7CDAD3E5BBFBF45BD /* AISettingsView.swift */; };
+		3C9696053BA7B674C6C17AB8 /* FindReplaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0C358478A319EA6CDCD88D /* FindReplaceView.swift */; };
 		4303819E89ABABD77A07CAAB /* VaultManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 547BC7E921F9FE97D5E1FDFB /* VaultManager.swift */; };
 		45FB066A04B124E9FCA3C616 /* VaultManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B8AEC69E0A906FEB369E65F /* VaultManagerTests.swift */; };
 		510D9071D0FB97F41D0E75F2 /* FileTreeNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA0276F9C1191F2887D323C /* FileTreeNode.swift */; };
@@ -91,6 +92,7 @@
 		8A5E6E1D305CC664BA2359EF /* AnthropicService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicService.swift; sourceTree = "<group>"; };
 		8CA4A548001E6A9F67CA4D48 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
 		92198BE7E70BE34818243709 /* PinnedNotesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedNotesManager.swift; sourceTree = "<group>"; };
+		9A0C358478A319EA6CDCD88D /* FindReplaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindReplaceView.swift; sourceTree = "<group>"; };
 		9B8AEC69E0A906FEB369E65F /* VaultManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultManagerTests.swift; sourceTree = "<group>"; };
 		A2EA5FB34C2D6B4EC5C5501E /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		AA46BD002FC9228F70CD2F3C /* SearchServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchServiceTests.swift; sourceTree = "<group>"; };
@@ -202,6 +204,7 @@
 			isa = PBXGroup;
 			children = (
 				453174520EE44C378B02ECFD /* EditorView.swift */,
+				9A0C358478A319EA6CDCD88D /* FindReplaceView.swift */,
 				FBF7AA11228F4E7A580836CF /* MarkdownEditorView.swift */,
 				0193714558B3EA4D4A8ED74F /* MarkdownHighlighter.swift */,
 				21F7C47E272394C63E3A8157 /* MarkdownPreviewView.swift */,
@@ -383,6 +386,7 @@
 				510D9071D0FB97F41D0E75F2 /* FileTreeNode.swift in Sources */,
 				51E96ABA16DE326EF6F59C6B /* FileTreeRowView.swift in Sources */,
 				E34D408CBA2868B48A2CC539 /* FileTreeView.swift in Sources */,
+				3C9696053BA7B674C6C17AB8 /* FindReplaceView.swift in Sources */,
 				C622C7C85FEB0C87F9CE5F75 /* GeneralSettingsView.swift in Sources */,
 				17F85F614AF5D65055934E90 /* GraphDataProvider.swift in Sources */,
 				FF23795F06D150AAC136951C /* GraphView.swift in Sources */,

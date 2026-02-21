@@ -84,6 +84,18 @@ struct NoteroApp: App {
 
             // Edit menu additions
             CommandGroup(after: .textEditing) {
+                Button("Find...") {
+                    appState.showFindReplaceWithReplace = false
+                    appState.showFindReplace = true
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                Button("Find and Replace...") {
+                    appState.showFindReplaceWithReplace = true
+                    appState.showFindReplace = true
+                }
+                .keyboardShortcut("f", modifiers: [.command, .option])
+
                 Divider()
 
                 Button("Bold") {
