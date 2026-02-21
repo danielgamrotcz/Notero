@@ -75,6 +75,17 @@ struct NoteroApp: App {
                 Button("Export as PDF") {
                     exportAsPDF()
                 }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+
+                Button("Export as DOCX") {
+                    exportAsDOCX()
+                }
+                .keyboardShortcut("w", modifiers: [.command, .shift])
+
+                Button("Export as HTML") {
+                    exportAsHTML()
+                }
+                .keyboardShortcut("h", modifiers: [.command, .shift])
 
                 Button("Copy as HTML") {
                     let html = MarkdownRenderer.renderHTML(from: appState.currentContent)
@@ -300,6 +311,93 @@ struct NoteroApp: App {
                 }
             }
         }
+    }
+
+    private func exportAsDOCX() {
+        guard appState.selectedNoteURL != nil else { return }
+        let noteName = appState.selectedNoteURL?.deletingPathExtension().lastPathComponent ?? "note"
+
+        // Check for pandoc
+        let pandocAvailable = FileManager.default.fileExists(atPath: "/opt/homebrew/bin/pandoc")
+            || FileManager.default.fileExists(atPath: "/usr/local/bin/pandoc")
+
+        if pandocAvailable {
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.init(filenameExtension: "docx")!]
+            panel.nameFieldStringValue = noteName
+            guard panel.runModal() == .OK, let saveURL = panel.url else { return }
+
+            // Write temp markdown file
+            let tempDir = FileManager.default.temporaryDirectory
+            let tempMD = tempDir.appendingPathComponent("\(UUID().uuidString).md")
+            try? appState.currentContent.write(to: tempMD, atomically: true, encoding: .utf8)
+
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = ["pandoc", tempMD.path, "-o", saveURL.path]
+            try? process.run()
+            process.waitUntilExit()
+            try? FileManager.default.removeItem(at: tempMD)
+
+            if process.terminationStatus == 0 {
+                NSWorkspace.shared.open(saveURL)
+            }
+        } else {
+            // RTF fallback
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.rtf]
+            panel.nameFieldStringValue = noteName
+            guard panel.runModal() == .OK, let saveURL = panel.url else { return }
+
+            let attrString = NSAttributedString(string: appState.currentContent, attributes: [
+                .font: NSFont.systemFont(ofSize: 14),
+                .foregroundColor: NSColor.textColor
+            ])
+            if let rtfData = attrString.rtf(from: NSRange(location: 0, length: attrString.length)) {
+                try? rtfData.write(to: saveURL)
+                NSWorkspace.shared.open(saveURL)
+            }
+        }
+    }
+
+    private func exportAsHTML() {
+        guard appState.selectedNoteURL != nil else { return }
+        let noteName = appState.selectedNoteURL?.deletingPathExtension().lastPathComponent ?? "note"
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.html]
+        panel.nameFieldStringValue = noteName
+        guard panel.runModal() == .OK, let saveURL = panel.url else { return }
+
+        let content = appState.currentContent
+        let htmlContent = MarkdownRenderer.renderHTML(from: content)
+        let description = String(content.prefix(160)).replacingOccurrences(of: "\n", with: " ")
+        let dateString = Date().formatted(.dateTime.month(.abbreviated).day().year())
+
+        let fullHTML = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="\(description)">
+        <title>\(noteName)</title>
+        <style>
+        \(MarkdownRenderer.defaultCSS)
+        </style>
+        </head>
+        <body>
+        \(htmlContent)
+        </body>
+        </html>
+        """
+
+        try? fullHTML.write(to: saveURL, atomically: true, encoding: .utf8)
+
+        // Copy file URL and open
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(saveURL.absoluteString, forType: .string)
+        NSWorkspace.shared.open(saveURL)
     }
 
     private func openGraphView() {
