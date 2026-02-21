@@ -12,6 +12,7 @@ final class AppState: ObservableObject {
     let ollamaService = OllamaService()
     let pinnedNotesManager = PinnedNotesManager()
     let favoritesManager = FavoritesManager()
+    let semanticSearchService = SemanticSearchService()
 
     // UI State
     @Published var selectedNoteURL: URL?
