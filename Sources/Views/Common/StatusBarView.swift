@@ -3,12 +3,41 @@ import SwiftUI
 struct StatusBarView: View {
     @EnvironmentObject var appState: AppState
 
+    @State private var copiedID = false
+
     var body: some View {
         HStack(spacing: 12) {
             // Word and character count
             if appState.selectedNoteURL != nil {
                 Text("\(appState.currentContent.wordCount) words")
                 Text("\(appState.currentContent.characterCount) chars")
+            }
+
+            // Note ID
+            if let noteID = appState.currentNoteID {
+                Text("ID: \(String(noteID.prefix(8)))")
+                    .help(noteID)
+                    .onTapGesture {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(noteID, forType: .string)
+                        copiedID = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            copiedID = false
+                        }
+                    }
+                    .overlay {
+                        if copiedID {
+                            Text("Copied!")
+                                .font(.system(size: 10, weight: .medium))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(.ultraThickMaterial)
+                                .cornerRadius(4)
+                                .offset(y: -20)
+                                .transition(.opacity)
+                        }
+                    }
+                    .animation(.easeInOut(duration: 0.2), value: copiedID)
             }
 
             Spacer()

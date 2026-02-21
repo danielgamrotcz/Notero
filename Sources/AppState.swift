@@ -14,6 +14,7 @@ final class AppState: ObservableObject {
     // UI State
     @Published var selectedNoteURL: URL?
     @Published var currentContent: String = ""
+    @Published var currentNoteID: String?
     @Published var isPreviewMode: Bool = false
     @Published var showSidebar: Bool = true
     @Published var showBacklinks: Bool = false
@@ -33,6 +34,7 @@ final class AppState: ObservableObject {
     @Published var ollamaModel: String
     @Published var aiPrompt: String
     @Published var showAIDiff: Bool
+    @Published var sortOrder: NoteSortOrder
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -50,11 +52,19 @@ final class AppState: ObservableObject {
         self.spellCheckEnabled = defaults.bool(forKey: "spellCheckEnabled")
         self.showLineNumbers = defaults.bool(forKey: "showLineNumbers")
         self.fontSize = CGFloat(defaults.double(forKey: "fontSize").nonZero ?? 14)
-        self.claudeModel = defaults.string(forKey: "claudeModel") ?? "claude-sonnet-4-5-20241022"
+        self.claudeModel = defaults.string(forKey: "claudeModel") ?? "claude-sonnet-4-6"
         self.ollamaServerURL = defaults.string(forKey: "ollamaServerURL") ?? "http://localhost:11434"
         self.ollamaModel = defaults.string(forKey: "ollamaModel") ?? "llama3"
         self.aiPrompt = defaults.string(forKey: "aiPrompt") ?? "Improve the following text for clarity, conciseness, and flow. Keep the same language. Return only the improved text, no explanations."
         self.showAIDiff = defaults.bool(forKey: "showAIDiff")
+        let savedSort = defaults.string(forKey: "noteSortOrder") ?? ""
+        self.sortOrder = NoteSortOrder(rawValue: savedSort) ?? .nameAscending
+
+        // Forward VaultManager changes into AppState so SwiftUI redraws immediately
+        vault.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
 
         setupSettingsSync()
 
@@ -77,6 +87,15 @@ final class AppState: ObservableObject {
         $ollamaModel.dropFirst().sink { UserDefaults.standard.set($0, forKey: "ollamaModel") }.store(in: &cancellables)
         $aiPrompt.dropFirst().sink { UserDefaults.standard.set($0, forKey: "aiPrompt") }.store(in: &cancellables)
         $showAIDiff.dropFirst().sink { UserDefaults.standard.set($0, forKey: "showAIDiff") }.store(in: &cancellables)
+        $sortOrder.dropFirst().sink {
+            UserDefaults.standard.set($0.rawValue, forKey: "noteSortOrder")
+        }.store(in: &cancellables)
+        $sortOrder
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] order in
+                self?.vaultManager.loadFileTree(sortOrder: order)
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Note Operations
@@ -91,6 +110,9 @@ final class AppState: ObservableObject {
             currentContent = content
             selectedNoteURL = url
 
+            // Assign unique ID lazily
+            currentNoteID = NoteMetadataService.shared.ensureID(for: url)
+
             // Restore mode preference
             let modeKey = "mode-\(url.lastPathComponent)"
             isPreviewMode = UserDefaults.standard.bool(forKey: modeKey)
@@ -101,6 +123,7 @@ final class AppState: ObservableObject {
 
     func createNewNote(in folderURL: URL? = nil) {
         if let url = vaultManager.createNote(named: defaultNoteName, in: folderURL) {
+            _ = NoteMetadataService.shared.ensureID(for: url)
             openNote(url: url)
             Task {
                 await searchService.reindex(url: url)

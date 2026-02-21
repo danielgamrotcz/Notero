@@ -41,6 +41,7 @@
 		C550845B3AF72DDB35D9A8CF /* CommandItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320599A12A09A7450CC559C7 /* CommandItem.swift */; };
 		C622C7C85FEB0C87F9CE5F75 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01C3CE1E2BC60F44A95CC4 /* GeneralSettingsView.swift */; };
 		D0CF76B6F09324640CE8AD9F /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C96A08BE330BB4BB4176A4F1 /* EmptyStateView.swift */; };
+		D4A43B2EC509F0BC261B8EF5 /* NoteMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35471D23B8D9A66BDC42FAFF /* NoteMetadataService.swift */; };
 		E34D408CBA2868B48A2CC539 /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C855B9CF2B2FB9DDAA8833C /* FileTreeView.swift */; };
 		EB5A5F9714E01BE493341F4B /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13656045A1FE96BEF283D944 /* SidebarView.swift */; };
 		FA0C6EDA1E91D1C0A4103565 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4CBB351BA5DA3AB8059C6CA /* Assets.xcassets */; };
@@ -66,6 +67,7 @@
 		320599A12A09A7450CC559C7 /* CommandItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandItem.swift; sourceTree = "<group>"; };
 		320C7DB6947EDE72D0423EB5 /* Notero.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Notero.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		349EE3917E36CA999BDCAD29 /* LinkResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkResolver.swift; sourceTree = "<group>"; };
+		35471D23B8D9A66BDC42FAFF /* NoteMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteMetadataService.swift; sourceTree = "<group>"; };
 		453174520EE44C378B02ECFD /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
 		471F2FDF3CD42AFC0A3F8EE4 /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
 		472F74E4D8DD846556A29316 /* View+Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Shortcuts.swift"; sourceTree = "<group>"; };
@@ -230,6 +232,7 @@
 				47907A284D662DE80B43D4B7 /* AutoSaveService.swift */,
 				A2EA5FB34C2D6B4EC5C5501E /* KeychainManager.swift */,
 				349EE3917E36CA999BDCAD29 /* LinkResolver.swift */,
+				35471D23B8D9A66BDC42FAFF /* NoteMetadataService.swift */,
 				CACC125BE8A7962D222CC6A4 /* OllamaService.swift */,
 				DBB443D91BBB58E90F2EAD6E /* SearchService.swift */,
 				547BC7E921F9FE97D5E1FDFB /* VaultManager.swift */,
@@ -373,6 +376,7 @@
 				27AF45D0827C24BB0AE3D53D /* MarkdownRenderer.swift in Sources */,
 				2F77BDC8C73319792905BA59 /* NoteFile.swift in Sources */,
 				51CD57383D3A882C6BC90EC8 /* NoteFolder.swift in Sources */,
+				D4A43B2EC509F0BC261B8EF5 /* NoteMetadataService.swift in Sources */,
 				083C34FD0C6D7DBDE3D21116 /* NoteroApp.swift in Sources */,
 				655502B38047DC910A6DAB26 /* OllamaService.swift in Sources */,
 				2319639CC66F2AF8D0EE7A8D /* SearchIndex.swift in Sources */,
