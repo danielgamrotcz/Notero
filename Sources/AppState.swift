@@ -88,6 +88,7 @@ final class AppState: ObservableObject {
             .store(in: &cancellables)
 
         setupSettingsSync()
+        syncVaultPathToAppGroup()
 
         Task {
             await searchService.buildIndex()
@@ -288,6 +289,18 @@ final class AppState: ObservableObject {
                 isAIWorking = false
             }
         }
+    }
+}
+
+// MARK: - App Group Sync
+
+extension AppState {
+    func syncVaultPathToAppGroup() {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dir = home.appendingPathComponent(".notero")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let pathFile = dir.appendingPathComponent("vault-path.txt")
+        try? vaultManager.vaultURL.path.write(to: pathFile, atomically: true, encoding: .utf8)
     }
 }
 

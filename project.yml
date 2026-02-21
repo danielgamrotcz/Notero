@@ -20,6 +20,8 @@ targets:
     resources:
       - path: Sources/Resources/Assets.xcassets
       - path: Sources/Resources/preview.css
+    dependencies:
+      - target: NoteroShareExtension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cz.danielgamrot.Notero
@@ -36,6 +38,26 @@ targets:
         LD_RUNPATH_SEARCH_PATHS:
           - "$(inherited)"
           - "@executable_path/../Frameworks"
+
+  NoteroShareExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ShareExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: cz.danielgamrot.Notero.ShareExtension
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.share-services
+        INFOPLIST_KEY_NSExtension_NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ShareViewController"
+        CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
+        ENABLE_HARDENED_RUNTIME: NO
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
+          - "@executable_path/../../../../Frameworks"
 
   NoteroTests:
     type: bundle.unit-test
