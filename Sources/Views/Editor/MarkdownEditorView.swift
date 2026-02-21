@@ -55,7 +55,7 @@ struct MarkdownEditorView: NSViewRepresentable {
 
         scrollView.documentView = textView
         context.coordinator.textView = textView
-        context.coordinator.applyHighlighting()
+        context.coordinator.applyFullHighlighting()
 
         return scrollView
     }
@@ -67,10 +67,10 @@ struct MarkdownEditorView: NSViewRepresentable {
             let selectedRanges = textView.selectedRanges
             textView.string = text
             textView.selectedRanges = selectedRanges
-            context.coordinator.applyHighlighting()
+            context.coordinator.applyFullHighlighting()
         }
 
-        textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        context.coordinator.updateFontSize(fontSize)
         textView.isContinuousSpellCheckingEnabled = spellCheck
 
         let paragraphStyle = NSMutableParagraphStyle()
@@ -89,9 +89,15 @@ struct MarkdownEditorView: NSViewRepresentable {
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: MarkdownEditorView
         weak var textView: MarkdownTextView?
+        private var highlighter: MarkdownHighlighter
 
         init(_ parent: MarkdownEditorView) {
             self.parent = parent
+            self.highlighter = MarkdownHighlighter(fontSize: parent.fontSize)
+        }
+
+        func updateFontSize(_ size: CGFloat) {
+            highlighter = MarkdownHighlighter(fontSize: size)
         }
 
         func textDidChange(_ notification: Notification) {
@@ -99,97 +105,34 @@ struct MarkdownEditorView: NSViewRepresentable {
             let newText = textView.string
             parent.text = newText
             parent.onTextChange?(newText)
-            applyHighlighting()
+            applyEditHighlighting()
         }
 
-        func applyHighlighting() {
-            guard let textView = textView else { return }
-            let text = textView.string
-            let fullRange = NSRange(location: 0, length: (text as NSString).length)
-            guard let storage = textView.textStorage else { return }
+        func applyFullHighlighting() {
+            guard let textView = textView,
+                  let storage = textView.textStorage else { return }
+            guard !textView.string.isEmpty else { return }
 
             let selectedRanges = textView.selectedRanges
-
             storage.beginEditing()
-
-            let defaultFont = NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .regular)
-            let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.lineHeightMultiple = 1.6
-
-            // Reset to default
-            storage.addAttributes([
-                .font: defaultFont,
-                .foregroundColor: NSColor.labelColor,
-                .paragraphStyle: paragraphStyle
-            ], range: fullRange)
-
-            // Headings
-            applyPattern("^#{1,6}\\s+.*$", to: storage, in: text, attributes: [
-                .foregroundColor: NSColor.headingColor,
-                .font: NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .semibold)
-            ])
-
-            // Bold
-            applyPattern("\\*\\*[^*]+\\*\\*", to: storage, in: text, attributes: [
-                .font: NSFont.monospacedSystemFont(ofSize: parent.fontSize, weight: .bold)
-            ])
-
-            // Italic
-            applyPattern("(?<!\\*)\\*(?!\\*)[^*]+(?<!\\*)\\*(?!\\*)", to: storage, in: text, attributes: [
-                .font: NSFont(descriptor: defaultFont.fontDescriptor.withSymbolicTraits(.italic), size: parent.fontSize) ?? defaultFont
-            ])
-
-            // Inline code
-            applyPattern("`[^`]+`", to: storage, in: text, attributes: [
-                .backgroundColor: NSColor.codeBackground
-            ])
-
-            // Code blocks
-            applyPattern("```[\\s\\S]*?```", to: storage, in: text, attributes: [
-                .backgroundColor: NSColor.codeBackground
-            ])
-
-            // Links [text](url)
-            applyPattern("\\[([^\\]]+)\\]\\(([^)]+)\\)", to: storage, in: text, attributes: [
-                .foregroundColor: NSColor.linkColor
-            ])
-
-            // Wikilinks [[text]]
-            applyPattern("\\[\\[[^\\]]+\\]\\]", to: storage, in: text, attributes: [
-                .foregroundColor: NSColor.linkColor
-            ])
-
-            // Blockquotes
-            applyPattern("^>\\s+.*$", to: storage, in: text, attributes: [
-                .foregroundColor: NSColor.secondaryLabelColor
-            ])
-
-            // Task checkboxes
-            applyPattern("^-\\s+\\[[ xX]\\]", to: storage, in: text, attributes: [
-                .foregroundColor: NSColor.controlAccentColor
-            ])
-
-            // URLs
-            applyPattern("https?://\\S+", to: storage, in: text, attributes: [
-                .foregroundColor: NSColor.linkColor
-            ])
-
+            highlighter.highlightFull(storage: storage)
             storage.endEditing()
-
             textView.selectedRanges = selectedRanges
         }
 
-        private func applyPattern(
-            _ pattern: String,
-            to storage: NSTextStorage,
-            in text: String,
-            attributes: [NSAttributedString.Key: Any]
-        ) {
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) else { return }
-            let range = NSRange(location: 0, length: (text as NSString).length)
-            for match in regex.matches(in: text, range: range) {
-                storage.addAttributes(attributes, range: match.range)
-            }
+        private func applyEditHighlighting() {
+            guard let textView = textView,
+                  let storage = textView.textStorage else { return }
+            guard !textView.string.isEmpty else { return }
+
+            let selectedRanges = textView.selectedRanges
+            let fullString = textView.string as NSString
+            let fullRange = NSRange(location: 0, length: fullString.length)
+
+            storage.beginEditing()
+            highlighter.highlight(storage: storage, in: fullRange, fullString: fullString)
+            storage.endEditing()
+            textView.selectedRanges = selectedRanges
         }
     }
 }

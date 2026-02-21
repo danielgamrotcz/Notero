@@ -26,6 +26,7 @@
 		64790128185EF4C5FF3BCCA3 /* View+Shortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472F74E4D8DD846556A29316 /* View+Shortcuts.swift */; };
 		655502B38047DC910A6DAB26 /* OllamaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CACC125BE8A7962D222CC6A4 /* OllamaService.swift */; };
 		69DC7D71E26A0EB1C488172B /* AutoSaveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47907A284D662DE80B43D4B7 /* AutoSaveService.swift */; };
+		70BDC1402FAD0C6B49779E25 /* MarkdownHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0193714558B3EA4D4A8ED74F /* MarkdownHighlighter.swift */; };
 		85469B7B7DA9E03E58E6F0CF /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 471F2FDF3CD42AFC0A3F8EE4 /* CommandPaletteView.swift */; };
 		8D41DD2FE819E2FDC14F8832 /* AnthropicService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5E6E1D305CC664BA2359EF /* AnthropicService.swift */; };
 		8F18943A3852FB15F3CB42FE /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA5FB34C2D6B4EC5C5501E /* KeychainManager.swift */; };
@@ -58,6 +59,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0193714558B3EA4D4A8ED74F /* MarkdownHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlighter.swift; sourceTree = "<group>"; };
 		0A13797E9424E4A013F881BC /* NoteroApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteroApp.swift; sourceTree = "<group>"; };
 		0C855B9CF2B2FB9DDAA8833C /* FileTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
 		13656045A1FE96BEF283D944 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
@@ -192,6 +194,7 @@
 			children = (
 				453174520EE44C378B02ECFD /* EditorView.swift */,
 				FBF7AA11228F4E7A580836CF /* MarkdownEditorView.swift */,
+				0193714558B3EA4D4A8ED74F /* MarkdownHighlighter.swift */,
 				21F7C47E272394C63E3A8157 /* MarkdownPreviewView.swift */,
 			);
 			path = Editor;
@@ -372,6 +375,7 @@
 				B3027DBF55F9808278A7A8A7 /* LinkResolver.swift in Sources */,
 				18977A96E87365E3BCA4C77B /* Logger.swift in Sources */,
 				0DCA7F31533FE1BBEBD73A08 /* MarkdownEditorView.swift in Sources */,
+				70BDC1402FAD0C6B49779E25 /* MarkdownHighlighter.swift in Sources */,
 				C0AA74BFC4FF195F33A3A609 /* MarkdownPreviewView.swift in Sources */,
 				27AF45D0827C24BB0AE3D53D /* MarkdownRenderer.swift in Sources */,
 				2F77BDC8C73319792905BA59 /* NoteFile.swift in Sources */,
