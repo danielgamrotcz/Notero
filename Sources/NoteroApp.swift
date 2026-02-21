@@ -214,6 +214,11 @@ struct NoteroApp: App {
                     openGraphView()
                 }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
+
+                Button("Vault Statistics") {
+                    openVaultStatistics()
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
             }
 
             // Save
@@ -413,6 +418,17 @@ struct NoteroApp: App {
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Graph View"
         window.setContentSize(NSSize(width: 900, height: 600))
+        window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func openVaultStatistics() {
+        let statsView = VaultStatisticsView().environmentObject(appState)
+        let hostingController = NSHostingController(rootView: statsView)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "Vault Statistics"
+        window.setContentSize(NSSize(width: 750, height: 600))
         window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
         window.center()
         window.makeKeyAndOrderFront(nil)
