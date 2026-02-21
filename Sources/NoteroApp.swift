@@ -176,6 +176,13 @@ struct NoteroApp: App {
                     appState.showCommandPalette = true
                 }
                 .keyboardShortcut("p", modifiers: .command)
+
+                Divider()
+
+                Button("Graph View") {
+                    openGraphView()
+                }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
             }
 
             // Save
@@ -253,6 +260,17 @@ struct NoteroApp: App {
                 printOp.run()
             }
         }
+    }
+
+    private func openGraphView() {
+        let graphView = GraphView().environmentObject(appState)
+        let hostingController = NSHostingController(rootView: graphView)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "Graph View"
+        window.setContentSize(NSSize(width: 900, height: 600))
+        window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
+        window.center()
+        window.makeKeyAndOrderFront(nil)
     }
 
     private func togglePin() {
