@@ -10,7 +10,7 @@ struct NoteroApp: App {
                 .environmentObject(appState)
                 .frame(minWidth: 600, minHeight: 400)
                 .onAppear {
-                    NSWindow.allowsAutomaticWindowTabbing = false
+                    NSWindow.allowsAutomaticWindowTabbing = true
                 }
         }
         .commands {
