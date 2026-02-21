@@ -47,6 +47,7 @@ final class AppState: ObservableObject {
     @Published var dailyGoalEnabled: Bool
     @Published var dailyGoalTarget: Int
     @Published var dailyWordsWritten: Int = 0
+    @Published var showActivityHeatmapInSidebar: Bool
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -74,6 +75,7 @@ final class AppState: ObservableObject {
         self.sortOrder = NoteSortOrder(rawValue: savedSort) ?? .nameAscending
         self.dailyGoalEnabled = defaults.bool(forKey: "dailyGoalEnabled")
         self.dailyGoalTarget = defaults.object(forKey: "dailyGoalTarget") == nil ? 500 : defaults.integer(forKey: "dailyGoalTarget")
+        self.showActivityHeatmapInSidebar = defaults.bool(forKey: "showActivityHeatmapInSidebar")
 
         // Load today's word count
         let todayKey = "goal-\(Self.todayKey())"
@@ -109,6 +111,7 @@ final class AppState: ObservableObject {
         $showAIDiff.dropFirst().sink { UserDefaults.standard.set($0, forKey: "showAIDiff") }.store(in: &cancellables)
         $dailyGoalEnabled.dropFirst().sink { UserDefaults.standard.set($0, forKey: "dailyGoalEnabled") }.store(in: &cancellables)
         $dailyGoalTarget.dropFirst().sink { UserDefaults.standard.set($0, forKey: "dailyGoalTarget") }.store(in: &cancellables)
+        $showActivityHeatmapInSidebar.dropFirst().sink { UserDefaults.standard.set($0, forKey: "showActivityHeatmapInSidebar") }.store(in: &cancellables)
         $sortOrder.dropFirst().sink {
             UserDefaults.standard.set($0.rawValue, forKey: "noteSortOrder")
         }.store(in: &cancellables)

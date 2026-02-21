@@ -88,6 +88,11 @@ struct SidebarView: View {
                     _ = appState.vaultManager.createFolder(named: "New Folder")
                 }
             }
+            // Activity heatmap widget
+            if appState.showActivityHeatmapInSidebar {
+                Divider()
+                sidebarHeatmap
+            }
         }
         .frame(minWidth: 180, maxWidth: 400)
         .onChange(of: searchText) { _, newValue in
@@ -190,6 +195,42 @@ struct SidebarView: View {
                 .textCase(.uppercase)
         }
         .padding(.bottom, 4)
+    }
+
+    // MARK: - Sidebar Heatmap
+
+    @State private var heatmapExpanded = true
+
+    private var sidebarHeatmap: some View {
+        DisclosureGroup(isExpanded: $heatmapExpanded) {
+            let data = loadRecentActivity(weeks: 12)
+            ActivityHeatmapView(data: data)
+                .frame(height: 7 * 16)
+                .padding(.vertical, 4)
+        } label: {
+            Text("Activity")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+    }
+
+    private func loadRecentActivity(weeks: Int) -> [DailyWordCount] {
+        let defaults = UserDefaults.standard
+        let calendar = Calendar.current
+        let days = weeks * 7
+        var result: [DailyWordCount] = []
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        for dayOffset in (0..<days).reversed() {
+            guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) else { continue }
+            let key = "goal-\(formatter.string(from: date))"
+            let count = defaults.integer(forKey: key)
+            result.append(DailyWordCount(date: date, words: count))
+        }
+        return result
     }
 
     // MARK: - Search Results

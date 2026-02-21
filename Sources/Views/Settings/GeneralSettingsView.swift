@@ -74,6 +74,17 @@ struct GeneralSettingsView: View {
                 }
                 .padding(.vertical, 4)
             }
+            // Sidebar
+            GroupBox("Sidebar") {
+                HStack {
+                    Text("")
+                        .frame(width: labelWidth, alignment: .trailing)
+                    Toggle("Show activity heatmap in sidebar", isOn: $appState.showActivityHeatmapInSidebar)
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+            }
+
             // Writing Goal
             GroupBox("Writing Goal") {
                 VStack(spacing: 12) {
