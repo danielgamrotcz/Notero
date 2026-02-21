@@ -13,6 +13,9 @@ struct NoteroApp: App {
                 .onAppear {
                     NSWindow.allowsAutomaticWindowTabbing = true
                 }
+                .onOpenURL { url in
+                    handleURL(url)
+                }
         }
         .commands {
             // File menu
@@ -456,5 +459,95 @@ struct NoteroApp: App {
 
     private func insertLinePrefix(_ prefix: String) {
         appState.currentContent = prefix + appState.currentContent
+    }
+
+    // MARK: - URL Scheme
+
+    private func handleURL(_ url: URL) {
+        guard url.scheme == "notero" else { return }
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let params = components?.queryItems?.reduce(into: [String: String]()) { dict, item in
+            dict[item.name] = item.value
+        } ?? [:]
+
+        switch url.host {
+        case "open":
+            if let id = params["id"] {
+                openNoteByID(id)
+            } else if let name = params["name"] {
+                openNoteByName(name)
+            }
+        case "new":
+            let title = params["title"] ?? appState.defaultNoteName
+            let content = params["content"] ?? ""
+            createNoteFromURL(title: title, content: content)
+        case "search":
+            if let query = params["q"] {
+                appState.showQuickOpen = true
+                Task {
+                    await appState.searchService.search(query: query)
+                }
+            }
+        default:
+            break
+        }
+    }
+
+    private func openNoteByID(_ id: String) {
+        let files = appState.vaultManager.allMarkdownFiles()
+        for file in files {
+            let meta = NoteMetadataService.shared.metadata(for: file)
+            if meta.id == id {
+                appState.openNote(url: file)
+                return
+            }
+        }
+        showNoteNotFoundAlert(identifier: id)
+    }
+
+    private func openNoteByName(_ name: String) {
+        let nameLower = name.lowercased()
+        let files = appState.vaultManager.allMarkdownFiles()
+
+        // Exact match
+        if let exact = files.first(where: {
+            $0.deletingPathExtension().lastPathComponent.lowercased() == nameLower
+        }) {
+            appState.openNote(url: exact)
+            return
+        }
+
+        // Fuzzy match
+        if let fuzzy = files.first(where: {
+            $0.deletingPathExtension().lastPathComponent.lowercased().contains(nameLower)
+        }) {
+            appState.openNote(url: fuzzy)
+            return
+        }
+
+        showNoteNotFoundAlert(identifier: name)
+    }
+
+    private func createNoteFromURL(title: String, content: String) {
+        let sanitized = title.replacingOccurrences(of: "[:/\\\\?*\"<>|]", with: "-", options: .regularExpression)
+        var fileURL = appState.vaultManager.vaultURL.appendingPathComponent("\(sanitized).md")
+        var counter = 2
+        while FileManager.default.fileExists(atPath: fileURL.path) {
+            fileURL = appState.vaultManager.vaultURL.appendingPathComponent("\(sanitized) \(counter).md")
+            counter += 1
+        }
+        let noteContent = content.isEmpty ? "# \(title)\n" : "# \(title)\n\n\(content)"
+        try? noteContent.write(to: fileURL, atomically: true, encoding: .utf8)
+        _ = NoteMetadataService.shared.ensureID(for: fileURL)
+        appState.vaultManager.loadFileTree()
+        appState.openNote(url: fileURL)
+    }
+
+    private func showNoteNotFoundAlert(identifier: String) {
+        let alert = NSAlert()
+        alert.messageText = "Note not found"
+        alert.informativeText = "Could not find a note matching '\(identifier)'."
+        alert.alertStyle = .warning
+        alert.runModal()
     }
 }
