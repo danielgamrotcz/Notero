@@ -58,11 +58,6 @@ struct NoteroApp: App {
 
                 Divider()
 
-                Button("Pin Note") {
-                    togglePin()
-                }
-                .keyboardShortcut("p", modifiers: [.command, .shift])
-
                 Button("Add to Favorites") {
                     toggleFavorite()
                 }
@@ -445,14 +440,6 @@ struct NoteroApp: App {
         window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
         window.center()
         window.makeKeyAndOrderFront(nil)
-    }
-
-    private func togglePin() {
-        guard let url = appState.selectedNoteURL else { return }
-        let path = appState.pinnedNotesManager.relativePath(
-            for: url, vaultURL: appState.vaultManager.vaultURL
-        )
-        appState.pinnedNotesManager.togglePin(path)
     }
 
     private func toggleFavorite() {

@@ -65,11 +65,6 @@ struct SidebarView: View {
                     if !searchText.isEmpty && !appState.searchService.results.isEmpty {
                         searchResults
                     } else {
-                        // Pinned section
-                        if !appState.pinnedNotesManager.pinnedNotes.isEmpty {
-                            pinnedSection
-                        }
-
                         // Favorites section
                         if !appState.favoritesManager.orderedFavorites.isEmpty {
                             favoritesSection
@@ -101,53 +96,6 @@ struct SidebarView: View {
                 await appState.searchService.search(query: newValue)
             }
         }
-    }
-
-    // MARK: - Pinned Section
-
-    @State private var pinnedExpanded = true
-
-    private var pinnedSection: some View {
-        DisclosureGroup(isExpanded: $pinnedExpanded) {
-            ForEach(appState.pinnedNotesManager.pinnedNotes, id: \.self) { path in
-                let noteURL = appState.vaultManager.vaultURL.appendingPathComponent(path)
-                let noteName = (path as NSString).deletingPathExtension.components(separatedBy: "/").last ?? path
-                let selected = appState.selectedNoteURL == noteURL
-                HStack(spacing: 7) {
-                    Image(systemName: "pin.fill")
-                        .foregroundColor(selected ? .white : .accentColor)
-                        .font(.system(size: 11))
-                        .frame(width: 16, alignment: .center)
-                    Text(noteName)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .font(.system(size: 13))
-                        .foregroundColor(selected ? .white : .primary)
-                    Spacer()
-                }
-                .padding(.vertical, 4)
-                .padding(.horizontal, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(selected ? Color.accentColor : Color.clear)
-                )
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    appState.openNote(url: noteURL)
-                }
-                .contextMenu {
-                    Button("Unpin Note") {
-                        appState.pinnedNotesManager.unpin(path)
-                    }
-                }
-            }
-        } label: {
-            Text("Pinned")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
-        }
-        .padding(.bottom, 4)
     }
 
     // MARK: - Favorites Section

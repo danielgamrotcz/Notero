@@ -6,7 +6,6 @@ struct GraphNode: Codable {
     let path: String
     let wordCount: Int
     let isFavorite: Bool
-    let isPinned: Bool
     let noteID: String
 }
 
@@ -24,7 +23,6 @@ struct GraphData: Codable {
 enum GraphDataProvider {
     static func buildGraphData(
         vaultManager: VaultManager,
-        pinnedManager: PinnedNotesManager,
         favoritesManager: FavoritesManager
     ) -> GraphData {
         let files = vaultManager.allMarkdownFiles()
@@ -47,7 +45,6 @@ enum GraphDataProvider {
                 path: relativePath,
                 wordCount: wordCount,
                 isFavorite: favoritesManager.isFavorite(relativePath),
-                isPinned: pinnedManager.isPinned(relativePath),
                 noteID: meta.id
             )
             nodes.append(node)
@@ -73,12 +70,10 @@ enum GraphDataProvider {
 
     static func graphDataJSON(
         vaultManager: VaultManager,
-        pinnedManager: PinnedNotesManager,
         favoritesManager: FavoritesManager
     ) -> String {
         let data = buildGraphData(
             vaultManager: vaultManager,
-            pinnedManager: pinnedManager,
             favoritesManager: favoritesManager
         )
         guard let jsonData = try? JSONEncoder().encode(data),

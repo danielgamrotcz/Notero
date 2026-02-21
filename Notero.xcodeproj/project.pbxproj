@@ -18,7 +18,6 @@
 		2789DAAAC8108814194FD408 /* FavoritesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65627198D43A25894033E197 /* FavoritesManager.swift */; };
 		27AF45D0827C24BB0AE3D53D /* MarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 848C333CECADF478CCB3F5EC /* MarkdownRenderer.swift */; };
 		29DFB3D39D8B778DF8F71F90 /* LinkResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA4C32C8C48C7A7FB70995C4 /* LinkResolverTests.swift */; };
-		2A615474FBCB2C9C6C4DE22B /* PinnedNotesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92198BE7E70BE34818243709 /* PinnedNotesManager.swift */; };
 		2F77BDC8C73319792905BA59 /* NoteFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA655E6E8A64242C50735CA8 /* NoteFile.swift */; };
 		2F7A79E527640BBCDEA4E9F6 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E6356A7CDAD3E5BBFBF45BD /* AISettingsView.swift */; };
 		38AD31311BDCE50D8FEB820C /* SemanticSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1A6FAAADC44F5E16E5882DA /* SemanticSearchService.swift */; };
@@ -129,7 +128,6 @@
 		8A5E6E1D305CC664BA2359EF /* AnthropicService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicService.swift; sourceTree = "<group>"; };
 		8CA4A548001E6A9F67CA4D48 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
 		8FD33D6673875DB18AB4F5EA /* NoteHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteHistoryView.swift; sourceTree = "<group>"; };
-		92198BE7E70BE34818243709 /* PinnedNotesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedNotesManager.swift; sourceTree = "<group>"; };
 		9A0C358478A319EA6CDCD88D /* FindReplaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindReplaceView.swift; sourceTree = "<group>"; };
 		9B8AEC69E0A906FEB369E65F /* VaultManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultManagerTests.swift; sourceTree = "<group>"; };
 		A1A6FAAADC44F5E16E5882DA /* SemanticSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticSearchService.swift; sourceTree = "<group>"; };
@@ -326,7 +324,6 @@
 				D70BCE498DE832A0E8F16A99 /* NoteHistoryService.swift */,
 				35471D23B8D9A66BDC42FAFF /* NoteMetadataService.swift */,
 				CACC125BE8A7962D222CC6A4 /* OllamaService.swift */,
-				92198BE7E70BE34818243709 /* PinnedNotesManager.swift */,
 				DBB443D91BBB58E90F2EAD6E /* SearchService.swift */,
 				A1A6FAAADC44F5E16E5882DA /* SemanticSearchService.swift */,
 				547BC7E921F9FE97D5E1FDFB /* VaultManager.swift */,
@@ -510,7 +507,6 @@
 				083C34FD0C6D7DBDE3D21116 /* NoteroApp.swift in Sources */,
 				D74F1A44CD1C8B32CFCD5711 /* NoteroIntents.swift in Sources */,
 				655502B38047DC910A6DAB26 /* OllamaService.swift in Sources */,
-				2A615474FBCB2C9C6C4DE22B /* PinnedNotesManager.swift in Sources */,
 				2319639CC66F2AF8D0EE7A8D /* SearchIndex.swift in Sources */,
 				A2B53CE1392FA81F0557242F /* SearchService.swift in Sources */,
 				38AD31311BDCE50D8FEB820C /* SemanticSearchService.swift in Sources */,

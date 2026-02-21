@@ -105,7 +105,6 @@ struct GraphWebView: NSViewRepresentable {
     private func buildGraphHTML() -> String {
         let graphJSON = GraphDataProvider.graphDataJSON(
             vaultManager: appState.vaultManager,
-            pinnedManager: appState.pinnedNotesManager,
             favoritesManager: appState.favoritesManager
         )
 
@@ -211,7 +210,6 @@ struct GraphWebView: NSViewRepresentable {
 
         function nodeColor(d) {
             if (d.isFavorite) return "#FFD60A";
-            if (d.isPinned) return "#007AFF";
             return "white";
         }
 

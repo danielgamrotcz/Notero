@@ -10,7 +10,6 @@ final class AppState: ObservableObject {
     let linkResolver: LinkResolver
     let anthropicService = AnthropicService()
     let ollamaService = OllamaService()
-    let pinnedNotesManager = PinnedNotesManager()
     let favoritesManager = FavoritesManager()
     let semanticSearchService = SemanticSearchService()
 
