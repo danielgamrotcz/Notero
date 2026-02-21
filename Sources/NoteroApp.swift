@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 @main
 struct NoteroApp: App {
@@ -253,23 +254,50 @@ struct NoteroApp: App {
         guard appState.selectedNoteURL != nil else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
-        panel.nameFieldStringValue = appState.selectedNoteURL?.deletingPathExtension().lastPathComponent ?? "note"
-        if panel.runModal() == .OK, let url = panel.url {
-            let html = MarkdownRenderer.renderHTML(from: appState.currentContent)
-            let printInfo = NSPrintInfo()
-            printInfo.topMargin = 36
-            printInfo.bottomMargin = 36
-            printInfo.leftMargin = 36
-            printInfo.rightMargin = 36
+        let defaultName = appState.selectedNoteURL?.deletingPathExtension().lastPathComponent ?? "note"
+        panel.nameFieldStringValue = defaultName
+        panel.directoryURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
 
-            let view = NSTextView(frame: NSRect(x: 0, y: 0, width: 612, height: 792))
-            view.string = appState.currentContent
+        guard panel.runModal() == .OK, let saveURL = panel.url else { return }
 
-            if let printOp = NSPrintOperation(view: view, printInfo: printInfo) as NSPrintOperation? {
-                printOp.showsPrintPanel = false
-                printOp.showsProgressPanel = false
-                printInfo.dictionary().setObject(url, forKey: NSPrintInfo.AttributeKey.jobSavingURL as NSCopying)
-                printOp.run()
+        let noteName = appState.selectedNoteURL?.deletingPathExtension().lastPathComponent ?? "Note"
+        let dateString = Date().formatted(.dateTime.month(.abbreviated).day().year())
+
+        let pdfCSS = """
+        body { background: white !important; color: black !important; max-width: none !important; }
+        @page { margin: 2.5cm; size: A4; }
+        .pdf-footer { position: fixed; bottom: 0; left: 0; right: 0;
+            text-align: center; font-size: 10px; color: #999; padding: 10px; }
+        """
+
+        var content = appState.currentContent
+        let firstLine = content.components(separatedBy: .newlines).first?.trimmingCharacters(in: .whitespaces) ?? ""
+        var titleHTML = ""
+        if !firstLine.hasPrefix("# ") {
+            titleHTML = "<h1>\(noteName)</h1>"
+        }
+
+        var html = MarkdownRenderer.renderHTML(from: content)
+        // Inject PDF CSS and title
+        html = html.replacingOccurrences(of: "</style>", with: "\(pdfCSS)</style>")
+        html = html.replacingOccurrences(of: "<body>", with: "<body>\(titleHTML)")
+        html = html.replacingOccurrences(of: "</body>", with: "<div class='pdf-footer'>\(noteName) · Exported \(dateString)</div></body>")
+
+        // Use WKWebView to create PDF
+        let config = WKWebViewConfiguration()
+        let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 595, height: 842), configuration: config)
+        webView.loadHTMLString(html, baseURL: nil)
+
+        // Wait for load then generate PDF
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            webView.createPDF { result in
+                switch result {
+                case .success(let data):
+                    try? data.write(to: saveURL)
+                    NSWorkspace.shared.open(saveURL)
+                case .failure(let error):
+                    Log.general.error("PDF export failed: \(error.localizedDescription)")
+                }
             }
         }
     }
