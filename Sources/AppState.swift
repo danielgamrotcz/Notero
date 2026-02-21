@@ -176,7 +176,7 @@ final class AppState: ObservableObject {
 
         let firstLine = content.components(separatedBy: .newlines).first ?? ""
         let trimmed = firstLine.trimmingCharacters(in: .whitespaces)
-        guard let match = trimmed.range(of: "^#\\s+(.+)$", options: .regularExpression) else { return }
+        guard trimmed.range(of: "^#\\s+(.+)$", options: .regularExpression) != nil else { return }
 
         let titleStart = trimmed.index(trimmed.startIndex, offsetBy: trimmed.hasPrefix("# ") ? 2 : 0)
         var title = String(trimmed[titleStart...]).trimmingCharacters(in: .whitespaces)

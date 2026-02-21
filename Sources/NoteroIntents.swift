@@ -149,10 +149,10 @@ struct OpenNoteIntent: AppIntent {
         let vaultURL = resolveVaultURL()
 
         // Try by name first
-        if let noteURL = findNote(named: noteIdentifier, in: vaultURL) {
+        if findNote(named: noteIdentifier, in: vaultURL) != nil {
             let urlString = "notero://open?name=\(noteIdentifier.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? noteIdentifier)"
             if let url = URL(string: urlString) {
-                await NSWorkspace.shared.open(url)
+                NSWorkspace.shared.open(url)
             }
             return .result()
         }
@@ -160,7 +160,7 @@ struct OpenNoteIntent: AppIntent {
         // Try by ID
         let urlString = "notero://open?id=\(noteIdentifier)"
         if let url = URL(string: urlString) {
-            await NSWorkspace.shared.open(url)
+            NSWorkspace.shared.open(url)
         }
         return .result()
     }

@@ -307,7 +307,7 @@ struct NoteroApp: App {
             text-align: center; font-size: 10px; color: #999; padding: 10px; }
         """
 
-        var content = appState.currentContent
+        let content = appState.currentContent
         let firstLine = content.components(separatedBy: .newlines).first?.trimmingCharacters(in: .whitespaces) ?? ""
         var titleHTML = ""
         if !firstLine.hasPrefix("# ") {
@@ -398,7 +398,6 @@ struct NoteroApp: App {
         let content = appState.currentContent
         let htmlContent = MarkdownRenderer.renderHTML(from: content)
         let description = String(content.prefix(160)).replacingOccurrences(of: "\n", with: " ")
-        let dateString = Date().formatted(.dateTime.month(.abbreviated).day().year())
 
         let fullHTML = """
         <!DOCTYPE html>
