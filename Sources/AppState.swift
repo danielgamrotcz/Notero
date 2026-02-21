@@ -40,6 +40,9 @@ final class AppState: ObservableObject {
     @Published var aiPrompt: String
     @Published var showAIDiff: Bool
     @Published var sortOrder: NoteSortOrder
+    @Published var dailyGoalEnabled: Bool
+    @Published var dailyGoalTarget: Int
+    @Published var dailyWordsWritten: Int = 0
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -65,6 +68,12 @@ final class AppState: ObservableObject {
         self.showAIDiff = defaults.bool(forKey: "showAIDiff")
         let savedSort = defaults.string(forKey: "noteSortOrder") ?? ""
         self.sortOrder = NoteSortOrder(rawValue: savedSort) ?? .nameAscending
+        self.dailyGoalEnabled = defaults.bool(forKey: "dailyGoalEnabled")
+        self.dailyGoalTarget = defaults.object(forKey: "dailyGoalTarget") == nil ? 500 : defaults.integer(forKey: "dailyGoalTarget")
+
+        // Load today's word count
+        let todayKey = "goal-\(Self.todayKey())"
+        self.dailyWordsWritten = defaults.integer(forKey: todayKey)
 
         // Forward VaultManager changes into AppState so SwiftUI redraws immediately
         vault.objectWillChange
@@ -94,6 +103,8 @@ final class AppState: ObservableObject {
         $ollamaModel.dropFirst().sink { UserDefaults.standard.set($0, forKey: "ollamaModel") }.store(in: &cancellables)
         $aiPrompt.dropFirst().sink { UserDefaults.standard.set($0, forKey: "aiPrompt") }.store(in: &cancellables)
         $showAIDiff.dropFirst().sink { UserDefaults.standard.set($0, forKey: "showAIDiff") }.store(in: &cancellables)
+        $dailyGoalEnabled.dropFirst().sink { UserDefaults.standard.set($0, forKey: "dailyGoalEnabled") }.store(in: &cancellables)
+        $dailyGoalTarget.dropFirst().sink { UserDefaults.standard.set($0, forKey: "dailyGoalTarget") }.store(in: &cancellables)
         $sortOrder.dropFirst().sink {
             UserDefaults.standard.set($0.rawValue, forKey: "noteSortOrder")
         }.store(in: &cancellables)
@@ -269,6 +280,28 @@ final class AppState: ObservableObject {
                 isAIWorking = false
             }
         }
+    }
+}
+
+// MARK: - Word Count Tracking
+
+extension AppState {
+    private static func todayKey() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
+
+    func trackWordDelta(oldContent: String, newContent: String) {
+        guard dailyGoalEnabled else { return }
+        let oldCount = oldContent.split { $0.isWhitespace || $0.isNewline }.count
+        let newCount = newContent.split { $0.isWhitespace || $0.isNewline }.count
+        let delta = newCount - oldCount
+        guard delta > 0 else { return }
+
+        dailyWordsWritten += delta
+        let key = "goal-\(Self.todayKey())"
+        UserDefaults.standard.set(dailyWordsWritten, forKey: key)
     }
 }
 

@@ -74,6 +74,25 @@ struct GeneralSettingsView: View {
                 }
                 .padding(.vertical, 4)
             }
+            // Writing Goal
+            GroupBox("Writing Goal") {
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Daily goal")
+                            .frame(width: labelWidth, alignment: .trailing)
+                        Toggle("", isOn: $appState.dailyGoalEnabled)
+                            .labelsHidden()
+                        if appState.dailyGoalEnabled {
+                            Stepper(value: $appState.dailyGoalTarget, in: 100...5000, step: 100) {
+                                Text("\(appState.dailyGoalTarget) words")
+                                    .monospacedDigit()
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+                .padding(.vertical, 4)
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

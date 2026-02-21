@@ -17,7 +17,7 @@ struct StatusBarView: View {
                     Text("Modified \(relativeTime(modified))")
                 }
 
-                Text("\(appState.currentContent.wordCount) words")
+                Text("\(appState.currentContent.wordCount) words · ~\(readingTime) read")
 
                 // Note ID
                 if let noteID = appState.currentNoteID {
@@ -48,6 +48,24 @@ struct StatusBarView: View {
             }
 
             Spacer()
+
+            // Daily goal progress ring
+            if appState.dailyGoalEnabled {
+                let progress = min(1.0, Double(appState.dailyWordsWritten) / Double(max(1, appState.dailyGoalTarget)))
+                ZStack {
+                    Circle()
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 2)
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(
+                            progress >= 1.0 ? Color.green : Color.accentColor,
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                }
+                .frame(width: 14, height: 14)
+                .help("\(appState.dailyWordsWritten) / \(appState.dailyGoalTarget) words today")
+            }
 
             // AI status
             if !appState.aiStatus.isEmpty {
@@ -88,6 +106,18 @@ struct StatusBarView: View {
         case .saved(let date):
             Text("Saved \(date.formatted(.dateTime.hour().minute().second()))")
         }
+    }
+
+    private var readingTime: String {
+        let words = appState.currentContent.wordCount
+        if words == 0 { return "< 1 min" }
+        let minutes = Double(words) / 238.0
+        if minutes < 1 { return "< 1 min" }
+        if minutes < 10 {
+            let rounded = (minutes * 2).rounded() / 2
+            return "\(rounded == Double(Int(rounded)) ? "\(Int(rounded))" : String(format: "%.1f", rounded)) min"
+        }
+        return "\(Int(minutes.rounded(.up))) min"
     }
 
     private func relativeTime(_ date: Date) -> String {
