@@ -1,9 +1,15 @@
 import SwiftUI
+import Sparkle
 
 struct GeneralSettingsView: View {
     @EnvironmentObject var appState: AppState
+    private let updater: SPUUpdater
 
     private let labelWidth: CGFloat = 130
+
+    init(updater: SPUUpdater) {
+        self.updater = updater
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -98,6 +104,29 @@ struct GeneralSettingsView: View {
                                 Text("\(appState.dailyGoalTarget) words")
                                     .monospacedDigit()
                             }
+                        }
+                        Spacer()
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            // Updates
+            GroupBox("Updates") {
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Auto-check")
+                            .frame(width: labelWidth, alignment: .trailing)
+                        Toggle("Automatically check for updates", isOn: Binding(
+                            get: { updater.automaticallyChecksForUpdates },
+                            set: { updater.automaticallyChecksForUpdates = $0 }
+                        ))
+                        Spacer()
+                    }
+                    HStack {
+                        Text("")
+                            .frame(width: labelWidth, alignment: .trailing)
+                        Button("Check for Updates Now") {
+                            updater.checkForUpdates()
                         }
                         Spacer()
                     }

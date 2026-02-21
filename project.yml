@@ -5,6 +5,11 @@ options:
     macOS: "14.0"
   xcodeVersion: "15.0"
 
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    version: 2.7.1
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -22,6 +27,7 @@ targets:
       - path: Sources/Resources/preview.css
     dependencies:
       - target: NoteroShareExtension
+      - package: Sparkle
     info:
       path: Notero-Info.plist
       properties:
@@ -29,6 +35,9 @@ targets:
           - CFBundleURLName: cz.danielgamrot.Notero
             CFBundleURLSchemes:
               - notero
+        SUFeedURL: https://danielgamrot.cz/notero/appcast.xml
+        SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 86400
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cz.danielgamrot.Notero

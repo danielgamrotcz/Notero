@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Notero Updates</title>
+        <link>https://danielgamrot.cz/notero/appcast.xml</link>
+        <description>Notero update feed</description>
+        <language>en</language>
+        <item>
+            <title>Version 1.1</title>
+            <description><![CDATA[
+                <h2>What's New</h2>
+                <ul>
+                    <li>Feature description here</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 01 Jan 2026 00:00:00 +0000</pubDate>
+            <enclosure
+                url="https://danielgamrot.cz/notero/releases/Notero-1.1.zip"
+                sparkle:version="2"
+                sparkle:shortVersionString="1.1"
+                sparkle:edSignature="SIGNATURE_HERE"
+                length="FILESIZE_HERE"
+                type="application/octet-stream"
+            />
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+        </item>
+    </channel>
+</rss>

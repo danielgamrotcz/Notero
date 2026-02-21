@@ -1,9 +1,13 @@
 import SwiftUI
+import Sparkle
 import WebKit
 
 @main
 struct NoteroApp: App {
     @StateObject private var appState = AppState()
+    private let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil
+    )
 
     var body: some Scene {
         WindowGroup {
@@ -18,6 +22,13 @@ struct NoteroApp: App {
                 }
         }
         .commands {
+            // App menu
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates...") {
+                    updaterController.checkForUpdates(nil)
+                }
+            }
+
             // File menu
             CommandGroup(replacing: .newItem) {
                 Button("New Note") {
@@ -254,7 +265,7 @@ struct NoteroApp: App {
         .defaultSize(width: 1000, height: 700)
 
         Settings {
-            SettingsView()
+            SettingsView(updater: updaterController.updater)
                 .environmentObject(appState)
         }
     }
