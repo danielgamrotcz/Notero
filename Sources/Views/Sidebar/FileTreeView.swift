@@ -38,6 +38,32 @@ struct FileTreeView: View {
 
     @ViewBuilder
     private func fileContextMenu(fileNode: FileNode) -> some View {
+        let relativePath = appState.pinnedNotesManager.relativePath(
+            for: fileNode.url, vaultURL: appState.vaultManager.vaultURL
+        )
+
+        if appState.pinnedNotesManager.isPinned(relativePath) {
+            Button("Unpin Note") {
+                appState.pinnedNotesManager.unpin(relativePath)
+            }
+        } else {
+            Button("Pin Note") {
+                appState.pinnedNotesManager.pin(relativePath)
+            }
+        }
+
+        if appState.favoritesManager.isFavorite(relativePath) {
+            Button("Remove from Favorites") {
+                appState.favoritesManager.removeFavorite(relativePath)
+            }
+        } else {
+            Button("Add to Favorites") {
+                appState.favoritesManager.addFavorite(relativePath)
+            }
+        }
+
+        Divider()
+
         Button("Rename") {
             // Inline rename handled by sidebar
         }

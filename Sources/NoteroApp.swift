@@ -43,6 +43,18 @@ struct NoteroApp: App {
 
                 Divider()
 
+                Button("Pin Note") {
+                    togglePin()
+                }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+
+                Button("Add to Favorites") {
+                    toggleFavorite()
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+
+                Divider()
+
                 Button("Rename") {
                     // Handled in sidebar
                 }
@@ -136,6 +148,11 @@ struct NoteroApp: App {
                     appState.showLineNumbers.toggle()
                 }
 
+                Button("Refresh Vault") {
+                    appState.vaultManager.loadFileTree()
+                }
+                .keyboardShortcut("r", modifiers: .command)
+
                 Divider()
 
                 Button("Increase Font Size") {
@@ -183,8 +200,8 @@ struct NoteroApp: App {
 
                 Divider()
 
-                Button("AI Settings...") {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                SettingsLink {
+                    Text("AI Settings...")
                 }
             }
         }
@@ -236,6 +253,22 @@ struct NoteroApp: App {
                 printOp.run()
             }
         }
+    }
+
+    private func togglePin() {
+        guard let url = appState.selectedNoteURL else { return }
+        let path = appState.pinnedNotesManager.relativePath(
+            for: url, vaultURL: appState.vaultManager.vaultURL
+        )
+        appState.pinnedNotesManager.togglePin(path)
+    }
+
+    private func toggleFavorite() {
+        guard let url = appState.selectedNoteURL else { return }
+        let path = appState.favoritesManager.relativePath(
+            for: url, vaultURL: appState.vaultManager.vaultURL
+        )
+        appState.favoritesManager.toggleFavorite(path)
     }
 
     private func insertMarkdown(_ prefix: String, _ suffix: String) {
