@@ -26,6 +26,7 @@ final class AppState: ObservableObject {
     @Published var showQuickOpen: Bool = false
     @Published var showFindReplace: Bool = false
     @Published var showFindReplaceWithReplace: Bool = false
+    @Published var showNoteHistory: Bool = false
     @Published var showLineNumbers: Bool = false
     @Published var fontSize: CGFloat = 14
     @Published var aiStatus: String = ""
@@ -158,6 +159,7 @@ final class AppState: ObservableObject {
     func saveCurrentNote() {
         guard let url = selectedNoteURL else { return }
         autoSaveService.saveImmediately(content: currentContent, to: url)
+        NoteHistoryService.shared.saveSnapshot(content: currentContent, for: url)
         Task {
             await searchService.reindex(url: url)
         }

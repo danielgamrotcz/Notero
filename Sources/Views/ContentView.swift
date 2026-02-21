@@ -16,6 +16,9 @@ struct ContentView: View {
                     .environmentObject(appState)
             }
             .navigationSplitViewStyle(.balanced)
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                appState.vaultManager.loadFileTree()
+            }
 
             // Command Palette overlay
             if appState.showCommandPalette {
@@ -25,6 +28,10 @@ struct ContentView: View {
             if appState.showQuickOpen {
                 commandPaletteOverlay(notesOnly: true)
             }
+        }
+        .sheet(isPresented: $appState.showNoteHistory) {
+            NoteHistoryView(isPresented: $appState.showNoteHistory)
+                .environmentObject(appState)
         }
     }
 

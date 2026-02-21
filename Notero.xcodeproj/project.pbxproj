@@ -47,6 +47,8 @@
 		C622C7C85FEB0C87F9CE5F75 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01C3CE1E2BC60F44A95CC4 /* GeneralSettingsView.swift */; };
 		D0CF76B6F09324640CE8AD9F /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C96A08BE330BB4BB4176A4F1 /* EmptyStateView.swift */; };
 		D4A43B2EC509F0BC261B8EF5 /* NoteMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35471D23B8D9A66BDC42FAFF /* NoteMetadataService.swift */; };
+		D4DBFCB389E6493F72F82979 /* NoteHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD33D6673875DB18AB4F5EA /* NoteHistoryView.swift */; };
+		DC923326C626AAE75F8B9C5D /* NoteHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70BCE498DE832A0E8F16A99 /* NoteHistoryService.swift */; };
 		E34D408CBA2868B48A2CC539 /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C855B9CF2B2FB9DDAA8833C /* FileTreeView.swift */; };
 		EB5A5F9714E01BE493341F4B /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13656045A1FE96BEF283D944 /* SidebarView.swift */; };
 		FA0C6EDA1E91D1C0A4103565 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4CBB351BA5DA3AB8059C6CA /* Assets.xcassets */; };
@@ -91,6 +93,7 @@
 		891EDDB88BF9615F2B8239E6 /* preview.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = preview.css; sourceTree = "<group>"; };
 		8A5E6E1D305CC664BA2359EF /* AnthropicService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicService.swift; sourceTree = "<group>"; };
 		8CA4A548001E6A9F67CA4D48 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
+		8FD33D6673875DB18AB4F5EA /* NoteHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteHistoryView.swift; sourceTree = "<group>"; };
 		92198BE7E70BE34818243709 /* PinnedNotesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinnedNotesManager.swift; sourceTree = "<group>"; };
 		9A0C358478A319EA6CDCD88D /* FindReplaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindReplaceView.swift; sourceTree = "<group>"; };
 		9B8AEC69E0A906FEB369E65F /* VaultManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultManagerTests.swift; sourceTree = "<group>"; };
@@ -103,6 +106,7 @@
 		C96A08BE330BB4BB4176A4F1 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		CACC125BE8A7962D222CC6A4 /* OllamaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaService.swift; sourceTree = "<group>"; };
 		CE5A9904380ECF8B84E324F5 /* NoteFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteFolder.swift; sourceTree = "<group>"; };
+		D70BCE498DE832A0E8F16A99 /* NoteHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteHistoryService.swift; sourceTree = "<group>"; };
 		DBB443D91BBB58E90F2EAD6E /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
 		DC24CD54CEAC1F21F6CA8363 /* GraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphView.swift; sourceTree = "<group>"; };
 		DFA0276F9C1191F2887D323C /* FileTreeNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeNode.swift; sourceTree = "<group>"; };
@@ -147,6 +151,7 @@
 			children = (
 				E1A712B656FC091AE65E418D /* ContentView.swift */,
 				DC24CD54CEAC1F21F6CA8363 /* GraphView.swift */,
+				8FD33D6673875DB18AB4F5EA /* NoteHistoryView.swift */,
 				B74FA337C9A3498A1CBE2387 /* CommandPalette */,
 				D48771D46C986CFBD765265C /* Common */,
 				A0B49E35DDA899F3EF99878B /* Editor */,
@@ -249,6 +254,7 @@
 				539EB3F448EEC6729C3D6CBA /* GraphDataProvider.swift */,
 				A2EA5FB34C2D6B4EC5C5501E /* KeychainManager.swift */,
 				349EE3917E36CA999BDCAD29 /* LinkResolver.swift */,
+				D70BCE498DE832A0E8F16A99 /* NoteHistoryService.swift */,
 				35471D23B8D9A66BDC42FAFF /* NoteMetadataService.swift */,
 				CACC125BE8A7962D222CC6A4 /* OllamaService.swift */,
 				92198BE7E70BE34818243709 /* PinnedNotesManager.swift */,
@@ -399,6 +405,8 @@
 				27AF45D0827C24BB0AE3D53D /* MarkdownRenderer.swift in Sources */,
 				2F77BDC8C73319792905BA59 /* NoteFile.swift in Sources */,
 				51CD57383D3A882C6BC90EC8 /* NoteFolder.swift in Sources */,
+				DC923326C626AAE75F8B9C5D /* NoteHistoryService.swift in Sources */,
+				D4DBFCB389E6493F72F82979 /* NoteHistoryView.swift in Sources */,
 				D4A43B2EC509F0BC261B8EF5 /* NoteMetadataService.swift in Sources */,
 				083C34FD0C6D7DBDE3D21116 /* NoteroApp.swift in Sources */,
 				655502B38047DC910A6DAB26 /* OllamaService.swift in Sources */,

@@ -72,6 +72,13 @@ struct NoteroApp: App {
 
                 Divider()
 
+                Button("Note History...") {
+                    appState.showNoteHistory = true
+                }
+                .keyboardShortcut("y", modifiers: [.command, .shift])
+
+                Divider()
+
                 Button("Export as PDF") {
                     exportAsPDF()
                 }
