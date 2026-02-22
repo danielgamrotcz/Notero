@@ -87,6 +87,7 @@ enum MarkdownRenderer {
     private static func processHeadings(_ html: String) -> String {
         html.components(separatedBy: "\n").map { line in
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("#### ") { return "<h4>\(String(trimmed.dropFirst(5)))</h4>" }
             if trimmed.hasPrefix("### ") { return "<h3>\(String(trimmed.dropFirst(4)))</h3>" }
             if trimmed.hasPrefix("## ") { return "<h2>\(String(trimmed.dropFirst(3)))</h2>" }
             if trimmed.hasPrefix("# ") { return "<h1>\(String(trimmed.dropFirst(2)))</h1>" }
