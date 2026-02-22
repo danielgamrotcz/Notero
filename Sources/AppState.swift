@@ -35,6 +35,7 @@ final class AppState: ObservableObject {
     @Published var renamingIsNew: Bool = false
     @Published var isEditing: Bool = false
     @Published var pendingSearchHighlight: String?
+    @Published var focusedFolderURL: URL?
 
     // Settings
     @Published var defaultNoteName: String

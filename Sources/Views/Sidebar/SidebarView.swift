@@ -145,9 +145,11 @@ struct SidebarView: View {
         case .down:
             let next = min(currentIndex + 1, items.count - 1)
             focusedItemID = items[next].url
+            updateFocusedFolder(items[next])
         case .up:
             let prev = max(currentIndex - 1, 0)
             focusedItemID = items[prev].url
+            updateFocusedFolder(items[prev])
         case .right:
             if let id = focusedItemID,
                let node = items.first(where: { $0.url == id }),
@@ -181,6 +183,15 @@ struct SidebarView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func updateFocusedFolder(_ node: FileTreeNode) {
+        switch node {
+        case .folder(let folder):
+            appState.focusedFolderURL = folder.url
+        case .file:
+            appState.focusedFolderURL = node.url.deletingLastPathComponent()
         }
     }
 

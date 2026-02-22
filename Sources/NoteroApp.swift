@@ -37,7 +37,7 @@ struct NoteroApp: App {
                 .keyboardShortcut("t", modifiers: .command)
 
                 Button("New Note") {
-                    appState.createNewNote()
+                    appState.createNewNote(in: appState.focusedFolderURL)
                 }
                 .keyboardShortcut("n", modifiers: .command)
 
