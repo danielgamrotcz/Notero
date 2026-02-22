@@ -120,7 +120,7 @@ struct MarkdownHighlighter {
     // MARK: - Pattern Matchers
 
     private func applyHeadings(storage: NSTextStorage, string: NSString, range: NSRange) {
-        applyRegex("^(#{1,6})\\s+(.+)$", to: storage, string: string, range: range) { match in
+        applyRegex("^(#{1,6})\\s(.*)$", to: storage, string: string, range: range) { match in
             let hashRange = match.range(at: 1)
             let hashLength = hashRange.length
             let lineRange = match.range(at: 0)
