@@ -53,6 +53,10 @@ struct MarkdownEditorView: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.string = text
 
+        DispatchQueue.main.async {
+            textView.window?.makeFirstResponder(textView)
+        }
+
         scrollView.documentView = textView
         context.coordinator.textView = textView
         context.coordinator.applyFullHighlighting()
@@ -68,6 +72,12 @@ struct MarkdownEditorView: NSViewRepresentable {
             textView.string = text
             textView.selectedRanges = selectedRanges
             context.coordinator.applyFullHighlighting()
+
+            if textView.window?.firstResponder != textView {
+                DispatchQueue.main.async {
+                    textView.window?.makeFirstResponder(textView)
+                }
+            }
         }
 
         context.coordinator.updateFontSize(fontSize)
