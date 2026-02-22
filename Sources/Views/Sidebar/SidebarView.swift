@@ -3,6 +3,7 @@ import SwiftUI
 struct SidebarView: View {
     @EnvironmentObject var appState: AppState
     @State private var searchText = ""
+    @State private var focusedSearchResultIndex: Int = -1
 
     var body: some View {
         VStack(spacing: 0) {
@@ -184,32 +185,42 @@ struct SidebarView: View {
     // MARK: - Search Results
 
     private var searchResults: some View {
-        ForEach(appState.searchService.results) { result in
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Image(systemName: "doc.text")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                    Text(result.noteName)
-                        .font(.system(size: 13, weight: .medium))
-                }
-                if !result.folderPath.isEmpty {
-                    Text(result.folderPath)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                }
-                Text(result.snippet)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-            }
-            .padding(.vertical, 4)
-            .padding(.horizontal, 4)
-            .contentShape(Rectangle())
-            .onTapGesture {
+        ForEach(Array(appState.searchService.results.enumerated()), id: \.element.id) { index, result in
+            Button {
                 appState.openNote(url: result.noteURL)
                 searchText = ""
+                appState.searchService.results = []
+                focusedSearchResultIndex = -1
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text(result.noteName)
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    if !result.folderPath.isEmpty {
+                        Text(result.folderPath)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(result.snippet)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .buttonStyle(.plain)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(index == focusedSearchResultIndex
+                        ? Color.accentColor.opacity(0.15)
+                        : Color.clear)
+            )
         }
     }
 }
