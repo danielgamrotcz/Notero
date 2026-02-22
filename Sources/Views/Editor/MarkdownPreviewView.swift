@@ -29,24 +29,38 @@ struct MarkdownPreviewView: NSViewRepresentable {
         guard context.coordinator.lastContent != content else { return }
         context.coordinator.lastContent = content
 
+        let coordinator = context.coordinator
+
         // If page hasn't finished loading yet, do a full load (no scroll to preserve)
-        guard context.coordinator.pageLoaded else {
+        guard coordinator.pageLoaded else {
             let html = MarkdownRenderer.renderHTML(from: content)
             webView.loadHTMLString(html, baseURL: nil)
             return
         }
 
-        // Page is loaded — update content via JS to preserve scroll position
-        let html = MarkdownRenderer.renderHTML(from: content)
+        // Page is loaded — update content via innerHTML + base64 to preserve scroll position
+        let bodyHTML = MarkdownRenderer.renderBodyHTML(from: content)
+        let base64 = Data(bodyHTML.utf8).base64EncodedString()
 
-        // Escape the HTML for injection into a JS string literal
-        let escaped = html
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "`", with: "\\`")
+        let js = """
+        (function() {
+            var el = document.getElementById('content');
+            if (!el) return false;
+            el.innerHTML = atob('\(base64)');
+            attachListeners();
+            hljs.highlightAll();
+            return true;
+        })();
+        """
 
-        // Use a JS template literal to avoid quote escaping issues
-        let js = "document.open(); document.write(`\(escaped)`); document.close();"
-        webView.evaluateJavaScript(js, completionHandler: nil)
+        webView.evaluateJavaScript(js) { result, error in
+            // If JS update failed or content div not found, fall back to full page load
+            if error != nil || result as? Bool != true {
+                coordinator.pageLoaded = false
+                let html = MarkdownRenderer.renderHTML(from: coordinator.lastContent)
+                webView.loadHTMLString(html, baseURL: nil)
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {

@@ -1,13 +1,13 @@
 import Foundation
 
 enum MarkdownRenderer {
-    static func renderHTML(from markdown: String, cssPath: String? = nil) -> String {
+    /// Returns only the converted markdown HTML (no wrapper, no scripts).
+    static func renderBodyHTML(from markdown: String) -> String {
         var html = markdown
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
 
-        // Process blocks in order
         html = processCodeBlocks(html)
         html = processBlockquotes(html)
         html = processHeadings(html)
@@ -17,13 +17,18 @@ enum MarkdownRenderer {
         html = processTables(html)
         html = processParagraphs(html)
 
-        // Inline processing
         html = processBold(html)
         html = processItalic(html)
         html = processInlineCode(html)
         html = processLinks(html)
         html = processWikilinks(html)
         html = processImages(html)
+
+        return html
+    }
+
+    static func renderHTML(from markdown: String, cssPath: String? = nil) -> String {
+        let bodyHTML = renderBodyHTML(from: markdown)
 
         let css: String
         if let cssPath = cssPath {
@@ -46,22 +51,25 @@ enum MarkdownRenderer {
         <style media="(prefers-color-scheme: dark)">\(hljsDarkCSS)</style>
         <style media="(prefers-color-scheme: light)">\(hljsLightCSS)</style>
         <script>\(hljsScript)</script>
-        <script>hljs.highlightAll();</script>
         </head>
         <body>
-        \(html)
+        <div id="content">\(bodyHTML)</div>
         <script>
-        document.querySelectorAll('input[type="checkbox"]').forEach(function(cb, i) {
-            cb.addEventListener('change', function() {
-                window.webkit.messageHandlers.checkboxToggle.postMessage(i);
+        function attachListeners() {
+            document.querySelectorAll('input[type="checkbox"]').forEach(function(cb, i) {
+                cb.addEventListener('change', function() {
+                    window.webkit.messageHandlers.checkboxToggle.postMessage(i);
+                });
             });
-        });
-        document.querySelectorAll('a[data-wikilink]').forEach(function(a) {
-            a.addEventListener('click', function(e) {
-                e.preventDefault();
-                window.webkit.messageHandlers.wikilinkClick.postMessage(a.dataset.wikilink);
+            document.querySelectorAll('a[data-wikilink]').forEach(function(a) {
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.webkit.messageHandlers.wikilinkClick.postMessage(a.dataset.wikilink);
+                });
             });
-        });
+        }
+        attachListeners();
+        hljs.highlightAll();
         </script>
         </body>
         </html>

@@ -101,6 +101,9 @@ struct MarkdownEditorView: NSViewRepresentable {
                 layoutManager.ensureLayout(for: textContainer)
             }
             textView.needsDisplay = true
+            // Synchronous scroll-to-zero prevents a black frame between sync layout and async restore
+            scrollView.contentView.scroll(to: .zero)
+            scrollView.reflectScrolledClipView(scrollView.contentView)
             DispatchQueue.main.async {
                 scrollView.documentView?.layoutSubtreeIfNeeded()
                 if let targetY = savedY {
