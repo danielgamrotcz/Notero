@@ -13,13 +13,43 @@ final class AppState: ObservableObject {
     let favoritesManager = FavoritesManager()
     let semanticSearchService = SemanticSearchService()
 
+    // Tab State
+    @Published var tabs: [TabState] = [TabState()]
+    @Published var currentTabIndex: Int = 0
+
+    var selectedNoteURL: URL? {
+        get { tabs[currentTabIndex].selectedNoteURL }
+        set { tabs[currentTabIndex].selectedNoteURL = newValue; objectWillChange.send() }
+    }
+    var currentContent: String {
+        get { tabs[currentTabIndex].currentContent }
+        set { tabs[currentTabIndex].currentContent = newValue; objectWillChange.send() }
+    }
+    var currentNoteID: String? {
+        get { tabs[currentTabIndex].currentNoteID }
+        set { tabs[currentTabIndex].currentNoteID = newValue }
+    }
+    var currentNoteCreated: Date? {
+        get { tabs[currentTabIndex].currentNoteCreated }
+        set { tabs[currentTabIndex].currentNoteCreated = newValue }
+    }
+    var currentNoteModified: Date? {
+        get { tabs[currentTabIndex].currentNoteModified }
+        set { tabs[currentTabIndex].currentNoteModified = newValue; objectWillChange.send() }
+    }
+    var isPreviewMode: Bool {
+        get { tabs[currentTabIndex].isPreviewMode }
+        set { tabs[currentTabIndex].isPreviewMode = newValue; objectWillChange.send() }
+    }
+
+    var currentContentBinding: Binding<String> {
+        Binding(
+            get: { self.currentContent },
+            set: { self.currentContent = $0 }
+        )
+    }
+
     // UI State
-    @Published var selectedNoteURL: URL?
-    @Published var currentContent: String = ""
-    @Published var currentNoteID: String?
-    @Published var currentNoteCreated: Date?
-    @Published var currentNoteModified: Date?
-    @Published var isPreviewMode: Bool = false
     @Published var showSidebar: Bool = true
     @Published var showBacklinks: Bool = false
     @Published var showCommandPalette: Bool = false
@@ -277,27 +307,57 @@ final class AppState: ObservableObject {
     }
 
     func openNoteInNewTab(url: URL) {
-        // Use NSWindow tab group to open in a new tab
-        guard let currentWindow = NSApp.keyWindow else {
-            openNote(url: url)
-            return
+        // Save current tab before switching
+        if let currentURL = selectedNoteURL {
+            autoSaveService.saveImmediately(content: currentContent, to: currentURL)
         }
-        // Create a new window (which becomes a tab)
-        if let windowController = currentWindow.windowController {
-            windowController.newWindowForTab(nil)
-            // The new window gets a fresh AppState via SwiftUI — open the note there
-            if let newWindow = NSApp.keyWindow, newWindow != currentWindow {
-                newWindow.tabGroup?.selectedWindow = newWindow
-            }
-        }
+        let newTab = TabState()
+        tabs.append(newTab)
+        currentTabIndex = tabs.count - 1
         openNote(url: url)
     }
 
     func openNewTab() {
-        guard let currentWindow = NSApp.keyWindow else { return }
-        if let windowController = currentWindow.windowController {
-            windowController.newWindowForTab(nil)
+        // Save current tab before switching
+        if let currentURL = selectedNoteURL {
+            autoSaveService.saveImmediately(content: currentContent, to: currentURL)
         }
+        let newTab = TabState()
+        tabs.append(newTab)
+        currentTabIndex = tabs.count - 1
+    }
+
+    func closeTab(at index: Int) {
+        guard tabs.count > 1 else { return }
+        // Save tab being closed
+        if let url = tabs[index].selectedNoteURL {
+            autoSaveService.saveImmediately(content: tabs[index].currentContent, to: url)
+        }
+        tabs.remove(at: index)
+        if currentTabIndex >= tabs.count {
+            currentTabIndex = tabs.count - 1
+        }
+    }
+
+    func closeCurrentTab() {
+        closeTab(at: currentTabIndex)
+    }
+
+    func switchToTab(at index: Int) {
+        guard index >= 0, index < tabs.count else { return }
+        // Save current before switching
+        if let currentURL = selectedNoteURL {
+            autoSaveService.saveImmediately(content: currentContent, to: currentURL)
+        }
+        currentTabIndex = index
+    }
+
+    func selectNextTab() {
+        switchToTab(at: (currentTabIndex + 1) % tabs.count)
+    }
+
+    func selectPreviousTab() {
+        switchToTab(at: (currentTabIndex - 1 + tabs.count) % tabs.count)
     }
 
     func togglePreview() {
@@ -397,6 +457,25 @@ extension AppState {
         dailyWordsWritten += delta
         let key = "goal-\(Self.todayKey())"
         UserDefaults.standard.set(dailyWordsWritten, forKey: key)
+    }
+}
+
+// MARK: - Tab State
+
+struct TabState: Identifiable {
+    let id = UUID()
+    var selectedNoteURL: URL?
+    var currentContent: String = ""
+    var currentNoteID: String?
+    var currentNoteCreated: Date?
+    var currentNoteModified: Date?
+    var isPreviewMode: Bool = false
+
+    var title: String {
+        if let url = selectedNoteURL {
+            return url.deletingPathExtension().lastPathComponent
+        }
+        return "New Tab"
     }
 }
 
