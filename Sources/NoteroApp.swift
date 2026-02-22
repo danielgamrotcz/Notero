@@ -41,24 +41,6 @@ struct NoteroApp: App {
 
                 Divider()
 
-                Button("New Tab") {
-                    NSApp.sendAction(#selector(NSWindow.newWindowForTab(_:)), to: nil, from: nil)
-                }
-                .keyboardShortcut("t", modifiers: .command)
-
-                Button("Close Tab") {
-                    guard let window = NSApp.keyWindow else { return }
-                    if (window.tabbedWindows?.count ?? 1) > 1 {
-                        window.close()
-                    } else {
-                        noteState?.selectedNoteURL = nil
-                        noteState?.currentContent = ""
-                    }
-                }
-                .keyboardShortcut("w", modifiers: .command)
-
-                Divider()
-
                 Button("Open...") {
                     appState.showQuickOpen = true
                 }

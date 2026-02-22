@@ -33,7 +33,7 @@ struct FileTreeView: View {
                                     isExpanded.wrappedValue.toggle()
                                 }
                             }
-                        if appState.renamingItemURL == folderNode.url {
+                        if appState.renamingItemURL?.path == folderNode.url.path {
                             InlineRenameField(
                                 url: folderNode.url,
                                 initialName: folderNode.name,
@@ -63,7 +63,7 @@ struct FileTreeView: View {
 
             case .file(let fileNode):
                 let selected = noteState.selectedNoteURL == fileNode.url
-                if appState.renamingItemURL == fileNode.url {
+                if appState.renamingItemURL?.path == fileNode.url.path {
                     InlineRenameField(
                         url: fileNode.url,
                         initialName: fileNode.name,

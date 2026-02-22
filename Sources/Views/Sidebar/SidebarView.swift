@@ -74,13 +74,8 @@ struct SidebarView: View {
                             favoritesSection
                         }
 
-                        // File tree
-                        FileTreeView(
-                            nodes: appState.vaultManager.fileTree,
-                            expandedFolders: $appState.expandedFolders
-                        )
-                        .environmentObject(appState)
-                        .environmentObject(noteState)
+                        // Folders section
+                        foldersSection
                     }
                 }
                 .padding(8)
@@ -154,6 +149,27 @@ struct SidebarView: View {
             }
         } label: {
             Text("Favorites")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+        }
+        .padding(.bottom, 4)
+    }
+
+    // MARK: - Folders Section
+
+    @State private var foldersExpanded = true
+
+    private var foldersSection: some View {
+        DisclosureGroup(isExpanded: $foldersExpanded) {
+            FileTreeView(
+                nodes: appState.vaultManager.fileTree,
+                expandedFolders: $appState.expandedFolders
+            )
+            .environmentObject(appState)
+            .environmentObject(noteState)
+        } label: {
+            Text("Folders")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
                 .textCase(.uppercase)
