@@ -117,16 +117,19 @@ struct SidebarView: View {
     // MARK: - Favorites Section
 
     @State private var favoritesExpanded = true
+    @State private var favoritesExpandedFolders: Set<URL> = []
 
     private var favoritesSection: some View {
         DisclosureGroup(isExpanded: $favoritesExpanded) {
-            ForEach(appState.favoritesManager.orderedFavorites, id: \.self) { path in
-                let itemURL = appState.vaultManager.vaultURL.appendingPathComponent(path)
-                if let node = findNode(for: itemURL, in: appState.vaultManager.fileTree),
-                   node.isFolder {
-                    favoriteFolderRow(node: node, path: path)
-                } else {
-                    favoriteFileRow(path: path, url: itemURL)
+            VStack(spacing: 0) {
+                ForEach(appState.favoritesManager.orderedFavorites, id: \.self) { path in
+                    let itemURL = appState.vaultManager.vaultURL.appendingPathComponent(path)
+                    if let node = findNode(for: itemURL, in: appState.vaultManager.fileTree),
+                       node.isFolder {
+                        favoriteFolderRow(node: node, path: path)
+                    } else {
+                        favoriteFileRow(path: path, url: itemURL)
+                    }
                 }
             }
         } label: {
@@ -142,10 +145,10 @@ struct SidebarView: View {
     private func favoriteFileRow(path: String, url: URL) -> some View {
         let noteName = (path as NSString).deletingPathExtension.components(separatedBy: "/").last ?? path
         let selected = noteState.selectedNoteURL == url
-        HStack(spacing: 7) {
-            Image(systemName: "star.fill")
-                .foregroundColor(selected ? .white : .yellow)
-                .font(.system(size: 11))
+        HStack(spacing: 6) {
+            Image(systemName: "doc.text.fill")
+                .foregroundColor(selected ? .white : .secondary.opacity(0.6))
+                .font(.system(size: 13))
                 .frame(width: 16, alignment: .center)
             Text(noteName)
                 .lineLimit(1)
@@ -175,12 +178,12 @@ struct SidebarView: View {
     private func favoriteFolderRow(node: FileTreeNode, path: String) -> some View {
         if case .folder(let folderNode) = node {
             let isExpanded = Binding<Bool>(
-                get: { appState.expandedFolders.contains(folderNode.url) },
+                get: { favoritesExpandedFolders.contains(folderNode.url) },
                 set: { newValue in
                     if newValue {
-                        appState.expandedFolders.insert(folderNode.url)
+                        favoritesExpandedFolders.insert(folderNode.url)
                     } else {
-                        appState.expandedFolders.remove(folderNode.url)
+                        favoritesExpandedFolders.remove(folderNode.url)
                     }
                 }
             )
@@ -196,32 +199,12 @@ struct SidebarView: View {
                                 isExpanded.wrappedValue.toggle()
                             }
                         }
-                    HStack(spacing: 6) {
-                        Image(systemName: "star.fill")
-                            .foregroundColor(.yellow)
-                            .font(.system(size: 11))
-                            .frame(width: 16, alignment: .center)
-                        Image(systemName: "folder.fill")
-                            .foregroundColor(.accentColor)
-                            .font(.system(size: 13))
-                            .frame(width: 16, alignment: .center)
-                        Text(folderNode.name)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer(minLength: 4)
-                        Text("\(folderNode.noteCount)")
-                            .font(.system(size: 10, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.vertical, 4)
-                    .padding(.horizontal, 4)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            isExpanded.wrappedValue.toggle()
+                    FileTreeRowView(node: node, isSelected: false)
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                isExpanded.wrappedValue.toggle()
+                            }
                         }
-                    }
                 }
                 .contextMenu {
                     Button("Remove from Favorites") {
@@ -231,7 +214,7 @@ struct SidebarView: View {
                 if isExpanded.wrappedValue {
                     FileTreeView(
                         nodes: folderNode.children,
-                        expandedFolders: $appState.expandedFolders
+                        expandedFolders: $favoritesExpandedFolders
                     )
                     .environmentObject(appState)
                     .environmentObject(noteState)
@@ -258,12 +241,14 @@ struct SidebarView: View {
 
     private var foldersSection: some View {
         DisclosureGroup(isExpanded: $foldersExpanded) {
-            FileTreeView(
-                nodes: appState.vaultManager.fileTree.filter(\.isFolder),
-                expandedFolders: $appState.expandedFolders
-            )
-            .environmentObject(appState)
-            .environmentObject(noteState)
+            VStack(spacing: 0) {
+                FileTreeView(
+                    nodes: appState.vaultManager.fileTree.filter(\.isFolder),
+                    expandedFolders: $appState.expandedFolders
+                )
+                .environmentObject(appState)
+                .environmentObject(noteState)
+            }
         } label: {
             Text("Folders")
                 .font(.system(size: 11, weight: .semibold))
@@ -279,12 +264,14 @@ struct SidebarView: View {
 
     private var inboxSection: some View {
         DisclosureGroup(isExpanded: $inboxExpanded) {
-            FileTreeView(
-                nodes: appState.vaultManager.fileTree.filter { !$0.isFolder },
-                expandedFolders: $appState.expandedFolders
-            )
-            .environmentObject(appState)
-            .environmentObject(noteState)
+            VStack(spacing: 0) {
+                FileTreeView(
+                    nodes: appState.vaultManager.fileTree.filter { !$0.isFolder },
+                    expandedFolders: $appState.expandedFolders
+                )
+                .environmentObject(appState)
+                .environmentObject(noteState)
+            }
         } label: {
             Text("Inbox")
                 .font(.system(size: 11, weight: .semibold))
