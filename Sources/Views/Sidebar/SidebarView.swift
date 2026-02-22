@@ -76,6 +76,11 @@ struct SidebarView: View {
 
                         // Folders section
                         foldersSection
+
+                        // Inbox section (root-level files)
+                        if !appState.vaultManager.fileTree.filter({ !$0.isFolder }).isEmpty {
+                            inboxSection
+                        }
                     }
                 }
                 .padding(8)
@@ -163,13 +168,34 @@ struct SidebarView: View {
     private var foldersSection: some View {
         DisclosureGroup(isExpanded: $foldersExpanded) {
             FileTreeView(
-                nodes: appState.vaultManager.fileTree,
+                nodes: appState.vaultManager.fileTree.filter(\.isFolder),
                 expandedFolders: $appState.expandedFolders
             )
             .environmentObject(appState)
             .environmentObject(noteState)
         } label: {
             Text("Folders")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+        }
+        .padding(.bottom, 4)
+    }
+
+    // MARK: - Inbox Section
+
+    @State private var inboxExpanded = true
+
+    private var inboxSection: some View {
+        DisclosureGroup(isExpanded: $inboxExpanded) {
+            FileTreeView(
+                nodes: appState.vaultManager.fileTree.filter { !$0.isFolder },
+                expandedFolders: $appState.expandedFolders
+            )
+            .environmentObject(appState)
+            .environmentObject(noteState)
+        } label: {
+            Text("Inbox")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
                 .textCase(.uppercase)
