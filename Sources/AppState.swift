@@ -271,6 +271,30 @@ final class AppState: ObservableObject {
         }
     }
 
+    func openNoteInNewTab(url: URL) {
+        // Use NSWindow tab group to open in a new tab
+        guard let currentWindow = NSApp.keyWindow else {
+            openNote(url: url)
+            return
+        }
+        // Create a new window (which becomes a tab)
+        if let windowController = currentWindow.windowController {
+            windowController.newWindowForTab(nil)
+            // The new window gets a fresh AppState via SwiftUI — open the note there
+            if let newWindow = NSApp.keyWindow, newWindow != currentWindow {
+                newWindow.tabGroup?.selectedWindow = newWindow
+            }
+        }
+        openNote(url: url)
+    }
+
+    func openNewTab() {
+        guard let currentWindow = NSApp.keyWindow else { return }
+        if let windowController = currentWindow.windowController {
+            windowController.newWindowForTab(nil)
+        }
+    }
+
     func togglePreview() {
         isPreviewMode.toggle()
         if let url = selectedNoteURL {

@@ -3,15 +3,33 @@ import SwiftUI
 struct FileTreeView: View {
     @EnvironmentObject var appState: AppState
     let nodes: [FileTreeNode]
+    var focusedItemID: Binding<URL?>?
+    var expandedFolders: Binding<Set<URL>>?
 
     var body: some View {
-        ForEach(nodes) { node in
+        ForEach(nodes) { (node: FileTreeNode) in
             switch node {
             case .folder(let folderNode):
-                DisclosureGroup {
-                    FileTreeView(nodes: folderNode.children)
-                        .environmentObject(appState)
-                        .padding(.leading, 4)
+                let isExpanded = Binding<Bool>(
+                    get: { expandedFolders?.wrappedValue.contains(folderNode.url) ?? false },
+                    set: { newValue in
+                        if newValue {
+                            expandedFolders?.wrappedValue.insert(folderNode.url)
+                        } else {
+                            expandedFolders?.wrappedValue.remove(folderNode.url)
+                        }
+                    }
+                )
+                let isFocused = focusedItemID?.wrappedValue == folderNode.url
+
+                DisclosureGroup(isExpanded: isExpanded) {
+                    FileTreeView(
+                        nodes: folderNode.children,
+                        focusedItemID: focusedItemID,
+                        expandedFolders: expandedFolders
+                    )
+                    .environmentObject(appState)
+                    .padding(.leading, 4)
                 } label: {
                     if appState.renamingItemURL == folderNode.url {
                         InlineRenameField(
@@ -22,12 +40,17 @@ struct FileTreeView: View {
                         .environmentObject(appState)
                     } else {
                         FileTreeRowView(node: node, isSelected: false)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(isFocused ? Color.accentColor.opacity(0.1) : Color.clear)
+                            )
                     }
                 }
                 .contextMenu { folderContextMenu(folder: folderNode) }
 
             case .file(let fileNode):
                 let selected = appState.selectedNoteURL == fileNode.url
+                let isFocused = focusedItemID?.wrappedValue == fileNode.url
                 if appState.renamingItemURL == fileNode.url {
                     InlineRenameField(
                         url: fileNode.url,
@@ -42,9 +65,19 @@ struct FileTreeView: View {
                     )
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(selected ? Color.accentColor : Color.clear)
+                            .fill(selected ? Color.accentColor :
+                                    (isFocused ? Color.accentColor.opacity(0.1) : Color.clear))
                     )
-                    .onTapGesture { appState.openNote(url: fileNode.url) }
+                    .gesture(
+                        TapGesture().onEnded {
+                            let flags = NSApp.currentEvent?.modifierFlags ?? []
+                            if flags.contains(.command) {
+                                appState.openNoteInNewTab(url: fileNode.url)
+                            } else {
+                                appState.openNote(url: fileNode.url)
+                            }
+                        }
+                    )
                     .contextMenu { fileContextMenu(fileNode: fileNode) }
                     .draggable(fileNode.url.absoluteString)
                     .help("Created \(fileNode.createdDate.formatted(.dateTime.month(.abbreviated).day().year()))\nModified \(relativeTime(fileNode.modificationDate))")
