@@ -107,7 +107,7 @@ struct SidebarView: View {
         .onChange(of: searchText) { _, newValue in
             focusedSearchResultIndex = 0
             Task {
-                try? await Task.sleep(nanoseconds: 150_000_000)
+                try? await Task.sleep(nanoseconds: 80_000_000)
                 await appState.searchService.search(query: newValue)
             }
         }
