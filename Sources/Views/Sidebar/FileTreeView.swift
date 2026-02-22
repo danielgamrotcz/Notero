@@ -147,6 +147,19 @@ struct FileTreeView: View {
 
     @ViewBuilder
     private func folderContextMenu(folder: FolderNode) -> some View {
+        let relativePath = appState.favoritesManager.relativePath(
+            for: folder.url, vaultURL: appState.vaultManager.vaultURL
+        )
+        if appState.favoritesManager.isFavorite(relativePath) {
+            Button("Remove from Favorites") {
+                appState.favoritesManager.removeFavorite(relativePath)
+            }
+        } else {
+            Button("Add to Favorites") {
+                appState.favoritesManager.addFavorite(relativePath)
+            }
+        }
+        Divider()
         Button("New Note") {
             noteState.createNewNote(in: folder.url)
         }

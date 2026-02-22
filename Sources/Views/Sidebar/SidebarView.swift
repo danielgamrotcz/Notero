@@ -121,35 +121,12 @@ struct SidebarView: View {
     private var favoritesSection: some View {
         DisclosureGroup(isExpanded: $favoritesExpanded) {
             ForEach(appState.favoritesManager.orderedFavorites, id: \.self) { path in
-                let noteURL = appState.vaultManager.vaultURL.appendingPathComponent(path)
-                let noteName = (path as NSString).deletingPathExtension.components(separatedBy: "/").last ?? path
-                let selected = noteState.selectedNoteURL == noteURL
-                HStack(spacing: 7) {
-                    Image(systemName: "star.fill")
-                        .foregroundColor(selected ? .white : .yellow)
-                        .font(.system(size: 11))
-                        .frame(width: 16, alignment: .center)
-                    Text(noteName)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .font(.system(size: 13))
-                        .foregroundColor(selected ? .white : .primary)
-                    Spacer()
-                }
-                .padding(.vertical, 4)
-                .padding(.horizontal, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(selected ? Color.accentColor : Color.clear)
-                )
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    noteState.openNote(url: noteURL)
-                }
-                .contextMenu {
-                    Button("Remove from Favorites") {
-                        appState.favoritesManager.removeFavorite(path)
-                    }
+                let itemURL = appState.vaultManager.vaultURL.appendingPathComponent(path)
+                if let node = findNode(for: itemURL, in: appState.vaultManager.fileTree),
+                   node.isFolder {
+                    favoriteFolderRow(node: node, path: path)
+                } else {
+                    favoriteFileRow(path: path, url: itemURL)
                 }
             }
         } label: {
@@ -159,6 +136,120 @@ struct SidebarView: View {
                 .textCase(.uppercase)
         }
         .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private func favoriteFileRow(path: String, url: URL) -> some View {
+        let noteName = (path as NSString).deletingPathExtension.components(separatedBy: "/").last ?? path
+        let selected = noteState.selectedNoteURL == url
+        HStack(spacing: 7) {
+            Image(systemName: "star.fill")
+                .foregroundColor(selected ? .white : .yellow)
+                .font(.system(size: 11))
+                .frame(width: 16, alignment: .center)
+            Text(noteName)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .font(.system(size: 13))
+                .foregroundColor(selected ? .white : .primary)
+            Spacer()
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(selected ? Color.accentColor : Color.clear)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            noteState.openNote(url: url)
+        }
+        .contextMenu {
+            Button("Remove from Favorites") {
+                appState.favoritesManager.removeFavorite(path)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func favoriteFolderRow(node: FileTreeNode, path: String) -> some View {
+        if case .folder(let folderNode) = node {
+            let isExpanded = Binding<Bool>(
+                get: { appState.expandedFolders.contains(folderNode.url) },
+                set: { newValue in
+                    if newValue {
+                        appState.expandedFolders.insert(folderNode.url)
+                    } else {
+                        appState.expandedFolders.remove(folderNode.url)
+                    }
+                }
+            )
+            VStack(spacing: 0) {
+                HStack(spacing: 4) {
+                    Image(systemName: isExpanded.wrappedValue ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .frame(width: 12)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                isExpanded.wrappedValue.toggle()
+                            }
+                        }
+                    HStack(spacing: 6) {
+                        Image(systemName: "star.fill")
+                            .foregroundColor(.yellow)
+                            .font(.system(size: 11))
+                            .frame(width: 16, alignment: .center)
+                        Image(systemName: "folder.fill")
+                            .foregroundColor(.accentColor)
+                            .font(.system(size: 13))
+                            .frame(width: 16, alignment: .center)
+                        Text(folderNode.name)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer(minLength: 4)
+                        Text("\(folderNode.noteCount)")
+                            .font(.system(size: 10, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 4)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            isExpanded.wrappedValue.toggle()
+                        }
+                    }
+                }
+                .contextMenu {
+                    Button("Remove from Favorites") {
+                        appState.favoritesManager.removeFavorite(path)
+                    }
+                }
+                if isExpanded.wrappedValue {
+                    FileTreeView(
+                        nodes: folderNode.children,
+                        expandedFolders: $appState.expandedFolders
+                    )
+                    .environmentObject(appState)
+                    .environmentObject(noteState)
+                    .padding(.leading, 16)
+                }
+            }
+        }
+    }
+
+    private func findNode(for url: URL, in nodes: [FileTreeNode]) -> FileTreeNode? {
+        for node in nodes {
+            if node.url == url { return node }
+            if case .folder(let f) = node,
+               let found = findNode(for: url, in: f.children) {
+                return found
+            }
+        }
+        return nil
     }
 
     // MARK: - Folders Section
