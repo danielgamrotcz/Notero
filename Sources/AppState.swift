@@ -33,6 +33,8 @@ final class AppState: ObservableObject {
     @Published var isAIWorking: Bool = false
     @Published var renamingItemURL: URL?
     @Published var renamingIsNew: Bool = false
+    @Published var isEditing: Bool = false
+    @Published var pendingSearchHighlight: String?
 
     // Settings
     @Published var defaultNoteName: String

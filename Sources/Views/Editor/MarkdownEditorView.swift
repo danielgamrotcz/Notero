@@ -7,6 +7,7 @@ struct MarkdownEditorView: NSViewRepresentable {
     let showLineNumbers: Bool
     let spellCheck: Bool
     var onTextChange: ((String) -> Void)?
+    var pendingSearchHighlight: Binding<String?>?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -82,6 +83,19 @@ struct MarkdownEditorView: NSViewRepresentable {
 
         context.coordinator.updateFontSize(fontSize)
         textView.isContinuousSpellCheckingEnabled = spellCheck
+
+        // Activate find bar with search term if pending
+        if let searchBinding = pendingSearchHighlight, let term = searchBinding.wrappedValue, !term.isEmpty {
+            DispatchQueue.main.async {
+                // Set the search string on the pasteboard used by Find
+                let pb = NSPasteboard(name: .find)
+                pb.clearContents()
+                pb.setString(term, forType: .string)
+                // Show the find bar
+                textView.performFindPanelAction(NSMenuItem(title: "", action: nil, keyEquivalent: ""))
+                searchBinding.wrappedValue = nil
+            }
+        }
 
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineHeightMultiple = 1.6

@@ -28,8 +28,10 @@ struct EditorView: View {
                             spellCheck: appState.spellCheckEnabled,
                             onTextChange: { newText in
                                 guard let url = appState.selectedNoteURL else { return }
+                                appState.isEditing = true
                                 appState.autoSaveService.scheduleSave(content: newText, to: url)
-                            }
+                            },
+                            pendingSearchHighlight: $appState.pendingSearchHighlight
                         )
                         .transition(.opacity)
                     }
