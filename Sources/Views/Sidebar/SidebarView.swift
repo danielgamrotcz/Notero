@@ -165,7 +165,7 @@ struct SidebarView: View {
     @ViewBuilder
     private func favoriteFileRow(path: String, url: URL) -> some View {
         let noteName = (path as NSString).deletingPathExtension.components(separatedBy: "/").last ?? path
-        let selected = noteState.selectedNoteURL == url
+        let selected = noteState.selectedNoteURLs.contains(url)
         HStack(spacing: 6) {
             Image(systemName: "doc.text.fill")
                 .foregroundColor(selected ? .white : .secondary.opacity(0.6))
@@ -185,9 +185,18 @@ struct SidebarView: View {
                 .fill(selected ? Color.accentColor : Color.clear)
         )
         .contentShape(Rectangle())
-        .onTapGesture {
-            noteState.openNote(url: url)
-        }
+        .gesture(
+            TapGesture().onEnded {
+                let modifiers = NSApp.currentEvent?.modifierFlags ?? []
+                if modifiers.contains(.command) {
+                    noteState.toggleNoteInSelection(url)
+                } else if modifiers.contains(.shift) {
+                    noteState.extendSelection(to: url, visibleURLs: visibleFileURLs())
+                } else {
+                    noteState.openNote(url: url)
+                }
+            }
+        )
         .contextMenu {
             Button("Remove from Favorites") {
                 appState.favoritesManager.removeFavorite(path)
@@ -235,7 +244,8 @@ struct SidebarView: View {
                 if isExpanded.wrappedValue {
                     FileTreeView(
                         nodes: folderNode.children,
-                        expandedFolders: $favoritesExpandedFolders
+                        expandedFolders: $favoritesExpandedFolders,
+                        visibleURLs: visibleFileURLs()
                     )
                     .environmentObject(appState)
                     .environmentObject(noteState)
@@ -265,7 +275,8 @@ struct SidebarView: View {
             VStack(spacing: 0) {
                 FileTreeView(
                     nodes: appState.vaultManager.fileTree.filter(\.isFolder),
-                    expandedFolders: $appState.expandedFolders
+                    expandedFolders: $appState.expandedFolders,
+                    visibleURLs: visibleFileURLs()
                 )
                 .environmentObject(appState)
                 .environmentObject(noteState)
@@ -288,7 +299,8 @@ struct SidebarView: View {
             VStack(spacing: 0) {
                 FileTreeView(
                     nodes: appState.vaultManager.fileTree.filter { !$0.isFolder },
-                    expandedFolders: $appState.expandedFolders
+                    expandedFolders: $appState.expandedFolders,
+                    visibleURLs: visibleFileURLs()
                 )
                 .environmentObject(appState)
                 .environmentObject(noteState)
@@ -336,6 +348,57 @@ struct SidebarView: View {
             result.append(DailyWordCount(date: date, words: count))
         }
         return result
+    }
+
+    // MARK: - Visible File URLs (for Shift+click range)
+
+    private func visibleFileURLs() -> [URL] {
+        var urls: [URL] = []
+
+        // Favorites (files only, and expanded favorite folders)
+        if favoritesExpanded {
+            for path in appState.favoritesManager.orderedFavorites {
+                let itemURL = appState.vaultManager.vaultURL.appendingPathComponent(path)
+                if let node = findNode(for: itemURL, in: appState.vaultManager.fileTree),
+                   node.isFolder {
+                    if case .folder(let folderNode) = node,
+                       favoritesExpandedFolders.contains(folderNode.url) {
+                        collectFileURLs(from: folderNode.children, expandedFolders: favoritesExpandedFolders, into: &urls)
+                    }
+                } else {
+                    urls.append(itemURL)
+                }
+            }
+        }
+
+        // Folders section
+        if foldersExpanded {
+            collectFileURLs(from: appState.vaultManager.fileTree.filter(\.isFolder), expandedFolders: appState.expandedFolders, into: &urls)
+        }
+
+        // Inbox section (root-level files)
+        if inboxExpanded {
+            for node in appState.vaultManager.fileTree where !node.isFolder {
+                if case .file(let fileNode) = node {
+                    urls.append(fileNode.url)
+                }
+            }
+        }
+
+        return urls
+    }
+
+    private func collectFileURLs(from nodes: [FileTreeNode], expandedFolders: Set<URL>, into urls: inout [URL]) {
+        for node in nodes {
+            switch node {
+            case .file(let fileNode):
+                urls.append(fileNode.url)
+            case .folder(let folderNode):
+                if expandedFolders.contains(folderNode.url) {
+                    collectFileURLs(from: folderNode.children, expandedFolders: expandedFolders, into: &urls)
+                }
+            }
+        }
     }
 
     // MARK: - Favorite Drop Delegate

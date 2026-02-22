@@ -69,10 +69,13 @@ struct NoteroApp: App {
                 .keyboardShortcut(KeyEquivalent.init(Character(UnicodeScalar(NSF2FunctionKey)!)), modifiers: [])
 
                 Button("Move to Trash") {
-                    if let url = noteState?.selectedNoteURL {
-                        appState.vaultManager.moveToTrash(url: url)
-                        noteState?.selectedNoteURL = nil
-                        noteState?.currentContent = ""
+                    if let noteState = noteState, !noteState.selectedNoteURLs.isEmpty {
+                        for url in noteState.selectedNoteURLs {
+                            appState.vaultManager.moveToTrash(url: url)
+                        }
+                        noteState.selectedNoteURLs.removeAll()
+                        noteState.selectedNoteURL = nil
+                        noteState.currentContent = ""
                     }
                 }
                 .keyboardShortcut(.delete, modifiers: .command)

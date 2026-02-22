@@ -5,6 +5,7 @@ struct FileTreeView: View {
     @EnvironmentObject var noteState: NoteState
     let nodes: [FileTreeNode]
     var expandedFolders: Binding<Set<URL>>?
+    var visibleURLs: [URL] = []
 
     var body: some View {
         ForEach(nodes) { (node: FileTreeNode) in
@@ -53,7 +54,8 @@ struct FileTreeView: View {
                     if isExpanded.wrappedValue {
                         FileTreeView(
                             nodes: folderNode.children,
-                            expandedFolders: expandedFolders
+                            expandedFolders: expandedFolders,
+                            visibleURLs: visibleURLs
                         )
                         .environmentObject(appState)
                         .environmentObject(noteState)
@@ -62,7 +64,7 @@ struct FileTreeView: View {
                 }
 
             case .file(let fileNode):
-                let selected = noteState.selectedNoteURL == fileNode.url
+                let selected = noteState.selectedNoteURLs.contains(fileNode.url)
                 if appState.renamingItemURL?.path == fileNode.url.path {
                     InlineRenameField(
                         url: fileNode.url,
@@ -81,7 +83,14 @@ struct FileTreeView: View {
                     )
                     .gesture(
                         TapGesture().onEnded {
-                            noteState.openNote(url: fileNode.url)
+                            let modifiers = NSApp.currentEvent?.modifierFlags ?? []
+                            if modifiers.contains(.command) {
+                                noteState.toggleNoteInSelection(fileNode.url)
+                            } else if modifiers.contains(.shift) {
+                                noteState.extendSelection(to: fileNode.url, visibleURLs: visibleURLs)
+                            } else {
+                                noteState.openNote(url: fileNode.url)
+                            }
                         }
                     )
                     .contextMenu { fileContextMenu(fileNode: fileNode) }
@@ -94,44 +103,58 @@ struct FileTreeView: View {
 
     @ViewBuilder
     private func fileContextMenu(fileNode: FileNode) -> some View {
-        let relativePath = appState.favoritesManager.relativePath(
-            for: fileNode.url, vaultURL: appState.vaultManager.vaultURL
-        )
+        let isMultiSelect = noteState.selectedNoteURLs.count > 1
+            && noteState.selectedNoteURLs.contains(fileNode.url)
 
-        if appState.favoritesManager.isFavorite(relativePath) {
-            Button("Remove from Favorites") {
-                appState.favoritesManager.removeFavorite(relativePath)
-            }
-        } else {
-            Button("Add to Favorites") {
-                appState.favoritesManager.addFavorite(relativePath)
-            }
-        }
-
-        Divider()
-
-        Button("Rename") {
-            appState.renamingItemURL = fileNode.url
-        }
-        Button("Duplicate") {
-            _ = appState.vaultManager.duplicateNote(at: fileNode.url)
-        }
-        Divider()
-        Button("Move to Trash") {
-            appState.vaultManager.moveToTrash(url: fileNode.url)
-            if noteState.selectedNoteURL == fileNode.url {
+        if isMultiSelect {
+            Button("Move \(noteState.selectedNoteURLs.count) Items to Trash") {
+                for url in noteState.selectedNoteURLs {
+                    appState.vaultManager.moveToTrash(url: url)
+                }
+                noteState.selectedNoteURLs.removeAll()
                 noteState.selectedNoteURL = nil
                 noteState.currentContent = ""
             }
-        }
-        Divider()
-        Button("Reveal in Finder") {
-            appState.vaultManager.revealInFinder(url: fileNode.url)
-        }
-        Button("Copy Link") {
-            let link = "[[\(fileNode.name)]]"
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(link, forType: .string)
+        } else {
+            let relativePath = appState.favoritesManager.relativePath(
+                for: fileNode.url, vaultURL: appState.vaultManager.vaultURL
+            )
+
+            if appState.favoritesManager.isFavorite(relativePath) {
+                Button("Remove from Favorites") {
+                    appState.favoritesManager.removeFavorite(relativePath)
+                }
+            } else {
+                Button("Add to Favorites") {
+                    appState.favoritesManager.addFavorite(relativePath)
+                }
+            }
+
+            Divider()
+
+            Button("Rename") {
+                appState.renamingItemURL = fileNode.url
+            }
+            Button("Duplicate") {
+                _ = appState.vaultManager.duplicateNote(at: fileNode.url)
+            }
+            Divider()
+            Button("Move to Trash") {
+                appState.vaultManager.moveToTrash(url: fileNode.url)
+                if noteState.selectedNoteURL == fileNode.url {
+                    noteState.selectedNoteURL = nil
+                    noteState.currentContent = ""
+                }
+            }
+            Divider()
+            Button("Reveal in Finder") {
+                appState.vaultManager.revealInFinder(url: fileNode.url)
+            }
+            Button("Copy Link") {
+                let link = "[[\(fileNode.name)]]"
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(link, forType: .string)
+            }
         }
     }
 

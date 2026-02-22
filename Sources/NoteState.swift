@@ -4,6 +4,7 @@ import Combine
 @MainActor
 final class NoteState: ObservableObject {
     @Published var selectedNoteURL: URL?
+    @Published var selectedNoteURLs: Set<URL> = []
     @Published var currentContent: String = ""
     @Published var currentNoteID: String?
     @Published var currentNoteCreated: Date?
@@ -34,6 +35,7 @@ final class NoteState: ObservableObject {
         if let content = appState.vaultManager.readNote(at: url) {
             currentContent = content
             selectedNoteURL = url
+            selectedNoteURLs = [url]
 
             let meta = NoteMetadataService.shared.metadata(for: url)
             currentNoteID = meta.id
@@ -46,6 +48,70 @@ final class NoteState: ObservableObject {
 
             appState.linkResolver.findBacklinks(for: url)
         }
+    }
+
+    func toggleNoteInSelection(_ url: URL) {
+        guard let appState = appState else { return }
+
+        if let currentURL = selectedNoteURL {
+            appState.autoSaveService.saveImmediately(content: currentContent, to: currentURL)
+        }
+
+        if selectedNoteURLs.contains(url) {
+            selectedNoteURLs.remove(url)
+            if selectedNoteURL == url {
+                if let next = selectedNoteURLs.first {
+                    loadNoteContent(next)
+                } else {
+                    selectedNoteURL = nil
+                    currentContent = ""
+                    currentNoteID = nil
+                    currentNoteCreated = nil
+                    currentNoteModified = nil
+                }
+            }
+        } else {
+            selectedNoteURLs.insert(url)
+            loadNoteContent(url)
+        }
+    }
+
+    func extendSelection(to url: URL, visibleURLs: [URL]) {
+        guard let appState = appState else { return }
+
+        if let currentURL = selectedNoteURL {
+            appState.autoSaveService.saveImmediately(content: currentContent, to: currentURL)
+        }
+
+        let anchor = selectedNoteURL ?? url
+        guard let anchorIndex = visibleURLs.firstIndex(of: anchor),
+              let targetIndex = visibleURLs.firstIndex(of: url) else {
+            openNote(url: url)
+            return
+        }
+
+        let range = min(anchorIndex, targetIndex)...max(anchorIndex, targetIndex)
+        selectedNoteURLs = Set(visibleURLs[range])
+        loadNoteContent(url)
+    }
+
+    private func loadNoteContent(_ url: URL) {
+        guard let appState = appState,
+              let content = appState.vaultManager.readNote(at: url) else { return }
+
+        currentContent = content
+        selectedNoteURL = url
+
+        let meta = NoteMetadataService.shared.metadata(for: url)
+        currentNoteID = meta.id
+        currentNoteCreated = meta.created
+        let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+        currentNoteModified = attrs?[.modificationDate] as? Date
+
+        let modeKey = "mode-\(url.lastPathComponent)"
+        isPreviewMode = UserDefaults.standard.bool(forKey: modeKey)
+
+        appState.linkResolver.findBacklinks(for: url)
     }
 
     func createNewNote(in folderURL: URL? = nil) {
@@ -193,6 +259,10 @@ final class NoteState: ObservableObject {
         do {
             try FileManager.default.moveItem(at: url, to: targetURL)
             selectedNoteURL = targetURL
+            if selectedNoteURLs.contains(url) {
+                selectedNoteURLs.remove(url)
+                selectedNoteURLs.insert(targetURL)
+            }
             NoteMetadataService.shared.updatePath(from: url, to: targetURL)
             appState.vaultManager.loadFileTree()
         } catch {

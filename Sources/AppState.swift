@@ -190,10 +190,14 @@ final class AppState: ObservableObject {
             return
         }
         if let newURL = vaultManager.renameItem(at: url, to: trimmed) {
-            // Update selectedNoteURL in matching NoteState
+            // Update selection in matching NoteState
             for noteState in noteStates.allObjects {
                 if noteState.selectedNoteURL == url {
                     noteState.selectedNoteURL = newURL
+                }
+                if noteState.selectedNoteURLs.contains(url) {
+                    noteState.selectedNoteURLs.remove(url)
+                    noteState.selectedNoteURLs.insert(newURL)
                 }
             }
         }
