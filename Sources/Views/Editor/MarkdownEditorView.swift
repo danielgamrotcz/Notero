@@ -100,6 +100,7 @@ struct MarkdownEditorView: NSViewRepresentable {
                let textContainer = textView.textContainer {
                 layoutManager.ensureLayout(for: textContainer)
             }
+            textView.needsDisplay = true
             DispatchQueue.main.async {
                 scrollView.documentView?.layoutSubtreeIfNeeded()
                 if let targetY = savedY {
