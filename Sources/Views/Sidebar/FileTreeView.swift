@@ -21,30 +21,45 @@ struct FileTreeView: View {
                     }
                 )
 
-                DisclosureGroup(isExpanded: isExpanded) {
-                    FileTreeView(
-                        nodes: folderNode.children,
-                        expandedFolders: expandedFolders
-                    )
-                    .environmentObject(appState)
-                    .environmentObject(noteState)
-                    .padding(.leading, 4)
-                } label: {
-                    if appState.renamingItemURL == folderNode.url {
-                        InlineRenameField(
-                            url: folderNode.url,
-                            initialName: folderNode.name,
-                            isFolder: true
+                VStack(spacing: 0) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isExpanded.wrappedValue ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                            .frame(width: 12)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    isExpanded.wrappedValue.toggle()
+                                }
+                            }
+                        if appState.renamingItemURL == folderNode.url {
+                            InlineRenameField(
+                                url: folderNode.url,
+                                initialName: folderNode.name,
+                                isFolder: true
+                            )
+                            .environmentObject(appState)
+                        } else {
+                            FileTreeRowView(node: node, isSelected: false)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        isExpanded.wrappedValue.toggle()
+                                    }
+                                }
+                        }
+                    }
+                    .contextMenu { folderContextMenu(folder: folderNode) }
+                    if isExpanded.wrappedValue {
+                        FileTreeView(
+                            nodes: folderNode.children,
+                            expandedFolders: expandedFolders
                         )
                         .environmentObject(appState)
-                    } else {
-                        FileTreeRowView(node: node, isSelected: false)
-                            .onTapGesture {
-                                isExpanded.wrappedValue.toggle()
-                            }
+                        .environmentObject(noteState)
+                        .padding(.leading, 16)
                     }
                 }
-                .contextMenu { folderContextMenu(folder: folderNode) }
 
             case .file(let fileNode):
                 let selected = noteState.selectedNoteURL == fileNode.url

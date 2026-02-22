@@ -29,7 +29,7 @@ final class AppState: ObservableObject {
     @Published var renamingItemURL: URL?
     @Published var renamingIsNew: Bool = false
     @Published var focusedFolderURL: URL?
-    @Published var folderToExpand: URL?
+    @Published var expandedFolders: Set<URL> = []
     @Published var focusSidebarSearch = false
 
     // Settings
@@ -165,12 +165,21 @@ final class AppState: ObservableObject {
             name = "New Folder \(counter)"
         }
         if let url = vaultManager.createFolder(named: name, in: folderURL) {
-            folderToExpand = parent
-            // Delay rename to allow folder expansion to render first
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            expandAncestors(of: parent)
+            // Delay rename to allow tree re-render after objectWillChange Combine hop
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                 self?.renamingIsNew = true
                 self?.renamingItemURL = url
             }
+        }
+    }
+
+    private func expandAncestors(of url: URL) {
+        let vaultPath = vaultManager.vaultURL.standardizedFileURL.path
+        var current = url.standardizedFileURL
+        while current.path != vaultPath && current.path != "/" {
+            expandedFolders.insert(current)
+            current = current.deletingLastPathComponent()
         }
     }
 

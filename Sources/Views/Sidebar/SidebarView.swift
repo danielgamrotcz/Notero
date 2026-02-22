@@ -5,7 +5,6 @@ struct SidebarView: View {
     @EnvironmentObject var noteState: NoteState
     @State private var searchText = ""
     @State private var focusedSearchResultIndex: Int = -1
-    @State private var expandedFolders: Set<URL> = []
     @FocusState private var isSearchFieldFocused: Bool
 
     var body: some View {
@@ -78,7 +77,7 @@ struct SidebarView: View {
                         // File tree
                         FileTreeView(
                             nodes: appState.vaultManager.fileTree,
-                            expandedFolders: $expandedFolders
+                            expandedFolders: $appState.expandedFolders
                         )
                         .environmentObject(appState)
                         .environmentObject(noteState)
@@ -111,12 +110,6 @@ struct SidebarView: View {
             if newValue {
                 isSearchFieldFocused = true
                 appState.focusSidebarSearch = false
-            }
-        }
-        .onChange(of: appState.folderToExpand) { _, newValue in
-            if let url = newValue {
-                expandedFolders.insert(url)
-                appState.folderToExpand = nil
             }
         }
     }

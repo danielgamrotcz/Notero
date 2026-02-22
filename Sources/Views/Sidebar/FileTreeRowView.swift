@@ -22,7 +22,7 @@ struct FileTreeRowView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
         .padding(.horizontal, 4)
         .contentShape(Rectangle())
     }
