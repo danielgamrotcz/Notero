@@ -31,6 +31,11 @@ struct NoteroApp: App {
 
             // File menu
             CommandGroup(replacing: .newItem) {
+                Button("New Tab") {
+                    appState.openNewTab()
+                }
+                .keyboardShortcut("t", modifiers: .command)
+
                 Button("New Note") {
                     appState.createNewNote()
                 }
@@ -164,7 +169,7 @@ struct NoteroApp: App {
                 Button("Insert Task") {
                     insertLinePrefix("- [ ] ")
                 }
-                .keyboardShortcut("t", modifiers: .command)
+                .keyboardShortcut(.return, modifiers: .command)
             }
 
             // View menu
