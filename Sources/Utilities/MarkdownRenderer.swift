@@ -32,6 +32,10 @@ enum MarkdownRenderer {
             css = "<style>\(defaultCSS)</style>"
         }
 
+        let hljsScript = Self.bundledResource("highlight.min", ext: "js") ?? ""
+        let hljsDarkCSS = Self.bundledResource("github-dark.min", ext: "css") ?? ""
+        let hljsLightCSS = Self.bundledResource("github.min", ext: "css") ?? ""
+
         return """
         <!DOCTYPE html>
         <html>
@@ -39,9 +43,9 @@ enum MarkdownRenderer {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         \(css)
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" media="(prefers-color-scheme: light)">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+        <style media="(prefers-color-scheme: dark)">\(hljsDarkCSS)</style>
+        <style media="(prefers-color-scheme: light)">\(hljsLightCSS)</style>
+        <script>\(hljsScript)</script>
         <script>hljs.highlightAll();</script>
         </head>
         <body>
@@ -62,6 +66,11 @@ enum MarkdownRenderer {
         </body>
         </html>
         """
+    }
+
+    private static func bundledResource(_ name: String, ext: String) -> String? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: ext) else { return nil }
+        return try? String(contentsOf: url, encoding: .utf8)
     }
 
     // MARK: - Block Elements

@@ -14,7 +14,10 @@
 		0DCA7F31533FE1BBEBD73A08 /* MarkdownEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF7AA11228F4E7A580836CF /* MarkdownEditorView.swift */; };
 		17F85F614AF5D65055934E90 /* GraphDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 539EB3F448EEC6729C3D6CBA /* GraphDataProvider.swift */; };
 		18977A96E87365E3BCA4C77B /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2516B62C09DA16AF6B3A82FB /* Logger.swift */; };
+		13DC509B121B376946FAED75 /* highlight.min.js in Resources */ = {isa = PBXBuildFile; fileRef = 9D1677D44A9EFD625F9194D4 /* highlight.min.js */; };
 		1A861CC74AF6EBB145FFC6EA /* preview.css in Resources */ = {isa = PBXBuildFile; fileRef = 891EDDB88BF9615F2B8239E6 /* preview.css */; };
+		39C71D809F6CC1F04371106D /* github.min.css in Resources */ = {isa = PBXBuildFile; fileRef = 89FD94AD8A36CC358B45192B /* github.min.css */; };
+		FF661E5FAE2978626CC958DF /* github-dark.min.css in Resources */ = {isa = PBXBuildFile; fileRef = A982F3DF7D96C5D0E0A0E554 /* github-dark.min.css */; };
 		1D3541323895163A660C0967 /* MarkdownHighlighterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABEB79BFE1227FF10CB56561 /* MarkdownHighlighterTests.swift */; };
 		2319639CC66F2AF8D0EE7A8D /* SearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51049ACC733B929DC52EE6E7 /* SearchIndex.swift */; };
 		2789DAAAC8108814194FD408 /* FavoritesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65627198D43A25894033E197 /* FavoritesManager.swift */; };
@@ -128,7 +131,10 @@
 		6A07863B21335AC6A457EC55 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		77089A50D3DAC140A98F84A0 /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
 		848C333CECADF478CCB3F5EC /* MarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRenderer.swift; sourceTree = "<group>"; };
+		89FD94AD8A36CC358B45192B /* github.min.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "github.min.css"; sourceTree = "<group>"; };
 		891EDDB88BF9615F2B8239E6 /* preview.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = preview.css; sourceTree = "<group>"; };
+		9D1677D44A9EFD625F9194D4 /* highlight.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "highlight.min.js"; sourceTree = "<group>"; };
+		A982F3DF7D96C5D0E0A0E554 /* github-dark.min.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "github-dark.min.css"; sourceTree = "<group>"; };
 		8A5E6E1D305CC664BA2359EF /* AnthropicService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicService.swift; sourceTree = "<group>"; };
 		8CA4A548001E6A9F67CA4D48 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
 		8FD33D6673875DB18AB4F5EA /* NoteHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteHistoryView.swift; sourceTree = "<group>"; };
@@ -238,6 +244,9 @@
 			isa = PBXGroup;
 			children = (
 				F4CBB351BA5DA3AB8059C6CA /* Assets.xcassets */,
+				A982F3DF7D96C5D0E0A0E554 /* github-dark.min.css */,
+				89FD94AD8A36CC358B45192B /* github.min.css */,
+				9D1677D44A9EFD625F9194D4 /* highlight.min.js */,
 				891EDDB88BF9615F2B8239E6 /* preview.css */,
 			);
 			path = Resources;
@@ -455,6 +464,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				FA0C6EDA1E91D1C0A4103565 /* Assets.xcassets in Resources */,
+				FF661E5FAE2978626CC958DF /* github-dark.min.css in Resources */,
+				39C71D809F6CC1F04371106D /* github.min.css in Resources */,
+				13DC509B121B376946FAED75 /* highlight.min.js in Resources */,
 				1A861CC74AF6EBB145FFC6EA /* preview.css in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
