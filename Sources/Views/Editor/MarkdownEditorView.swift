@@ -118,6 +118,23 @@ struct MarkdownEditorView: NSViewRepresentable {
         init(_ parent: MarkdownEditorView) {
             self.parent = parent
             self.highlighter = MarkdownHighlighter(fontSize: parent.fontSize)
+            super.init()
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(handleAIImprovement(_:)),
+                name: .aiTextImproved, object: nil
+            )
+        }
+
+        @objc private func handleAIImprovement(_ notification: Notification) {
+            guard let improved = notification.userInfo?["text"] as? String,
+                  let textView = textView,
+                  let storage = textView.textStorage else { return }
+            let fullRange = NSRange(location: 0, length: storage.length)
+            textView.breakUndoCoalescing()
+            if textView.shouldChangeText(in: fullRange, replacementString: improved) {
+                storage.replaceCharacters(in: fullRange, with: improved)
+                textView.didChangeText()
+            }
         }
 
         func updateFontSize(_ size: CGFloat) {

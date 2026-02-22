@@ -350,7 +350,12 @@ final class AppState: ObservableObject {
                         serverURL: serverURL, prompt: prompt
                     )
                 }
-                currentContent = improved
+                // Post notification so the editor replaces via undo manager
+                NotificationCenter.default.post(
+                    name: .aiTextImproved,
+                    object: nil,
+                    userInfo: ["text": improved]
+                )
                 aiStatus = "AI improvement applied"
                 isAIWorking = false
             } catch {
@@ -393,6 +398,10 @@ extension AppState {
         let key = "goal-\(Self.todayKey())"
         UserDefaults.standard.set(dailyWordsWritten, forKey: key)
     }
+}
+
+extension Notification.Name {
+    static let aiTextImproved = Notification.Name("NoteroAITextImproved")
 }
 
 private extension Double {
