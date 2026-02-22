@@ -2,28 +2,29 @@ import SwiftUI
 
 struct StatusBarView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var noteState: NoteState
 
     @State private var copiedID = false
 
     var body: some View {
         HStack(spacing: 12) {
             // Dates + word count + ID
-            if appState.selectedNoteURL != nil {
-                if let created = appState.currentNoteCreated {
+            if noteState.selectedNoteURL != nil {
+                if let created = noteState.currentNoteCreated {
                     Text("Created \(created.formatted(.dateTime.month(.abbreviated).day().year()))")
                 }
 
-                if appState.isEditing {
+                if noteState.isEditing {
                     Text("Editing...")
                         .foregroundColor(.secondary)
-                } else if let modified = appState.currentNoteModified {
+                } else if let modified = noteState.currentNoteModified {
                     Text("Modified \(relativeTime(modified))")
                 }
 
-                Text("\(appState.currentContent.wordCount) words · ~\(readingTime) read")
+                Text("\(noteState.currentContent.wordCount) words · ~\(readingTime) read")
 
                 // Note ID
-                if let noteID = appState.currentNoteID {
+                if let noteID = noteState.currentNoteID {
                     Text("ID: \(String(noteID.prefix(8)))")
                         .help(noteID)
                         .onTapGesture {
@@ -71,16 +72,16 @@ struct StatusBarView: View {
             }
 
             // AI status
-            if !appState.aiStatus.isEmpty {
-                Text(appState.aiStatus)
-                    .foregroundColor(appState.isAIWorking ? .orange : .secondary)
+            if !noteState.aiStatus.isEmpty {
+                Text(noteState.aiStatus)
+                    .foregroundColor(noteState.isAIWorking ? .orange : .secondary)
             }
 
             // Save status
             saveStatusView
 
             // Mode indicator
-            Text(appState.isPreviewMode ? "Preview" : "Edit")
+            Text(noteState.isPreviewMode ? "Preview" : "Edit")
                 .padding(.horizontal, 6)
                 .padding(.vertical, 1)
                 .background(Color.accentColor.opacity(0.1))
@@ -117,7 +118,7 @@ struct StatusBarView: View {
     }
 
     private var readingTime: String {
-        let words = appState.currentContent.wordCount
+        let words = noteState.currentContent.wordCount
         if words == 0 { return "< 1 min" }
         let minutes = Double(words) / 238.0
         if minutes < 1 { return "< 1 min" }

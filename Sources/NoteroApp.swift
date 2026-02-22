@@ -5,6 +5,7 @@ import WebKit
 @main
 struct NoteroApp: App {
     @StateObject private var appState = AppState()
+    @FocusedObject private var noteState: NoteState?
     private let updaterController = SPUStandardUpdaterController(
         startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil
     )
@@ -14,9 +15,6 @@ struct NoteroApp: App {
             ContentView()
                 .environmentObject(appState)
                 .frame(minWidth: 600, minHeight: 400)
-                .onAppear {
-                    NSWindow.allowsAutomaticWindowTabbing = true
-                }
                 .onOpenURL { url in
                     handleURL(url)
                 }
@@ -31,15 +29,8 @@ struct NoteroApp: App {
 
             // File menu
             CommandGroup(replacing: .newItem) {
-                Button("New Tab") {
-                    appState.openNewTab()
-                }
-                .keyboardShortcut("t", modifiers: .command)
-
-                Divider()
-
                 Button("New Note") {
-                    appState.createNewNote(in: appState.focusedFolderURL)
+                    noteState?.createNewNote(in: appState.focusedFolderURL)
                 }
                 .keyboardShortcut("n", modifiers: .command)
 
@@ -78,10 +69,10 @@ struct NoteroApp: App {
                 .keyboardShortcut(KeyEquivalent.init(Character(UnicodeScalar(NSF2FunctionKey)!)), modifiers: [])
 
                 Button("Move to Trash") {
-                    if let url = appState.selectedNoteURL {
+                    if let url = noteState?.selectedNoteURL {
                         appState.vaultManager.moveToTrash(url: url)
-                        appState.selectedNoteURL = nil
-                        appState.currentContent = ""
+                        noteState?.selectedNoteURL = nil
+                        noteState?.currentContent = ""
                     }
                 }
                 .keyboardShortcut(.delete, modifiers: .command)
@@ -111,7 +102,7 @@ struct NoteroApp: App {
                 .keyboardShortcut("h", modifiers: [.command, .shift])
 
                 Button("Copy as HTML") {
-                    let html = MarkdownRenderer.renderHTML(from: appState.currentContent)
+                    let html = MarkdownRenderer.renderHTML(from: noteState?.currentContent ?? "")
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(html, forType: .string)
                 }
@@ -182,7 +173,7 @@ struct NoteroApp: App {
                 .keyboardShortcut("l", modifiers: [.command, .shift])
 
                 Button("Toggle Preview") {
-                    appState.togglePreview()
+                    noteState?.togglePreview()
                 }
                 .keyboardShortcut("e", modifiers: .command)
 
@@ -235,12 +226,25 @@ struct NoteroApp: App {
                     openVaultStatistics()
                 }
                 .keyboardShortcut("s", modifiers: [.command, .shift])
+
+                Divider()
+
+                Button("Search Notes") {
+                    appState.focusSidebarSearch = true
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+            }
+
+            CommandGroup(replacing: .help) {
+                Button("Check for Updates...") {
+                    updaterController.checkForUpdates(nil)
+                }
             }
 
             // Save
             CommandGroup(replacing: .saveItem) {
                 Button("Save") {
-                    appState.saveCurrentNote()
+                    noteState?.saveCurrentNote()
                 }
                 .keyboardShortcut("s", modifiers: .command)
             }
@@ -248,14 +252,14 @@ struct NoteroApp: App {
             // AI menu
             CommandMenu("AI") {
                 Button("Improve with Claude") {
-                    appState.improveWithClaude()
+                    noteState?.improveWithClaude()
                 }
-                .keyboardShortcut("a", modifiers: .option)
+                .keyboardShortcut("a", modifiers: [.command, .option])
 
                 Button("Improve with Local AI") {
-                    appState.improveWithOllama()
+                    noteState?.improveWithOllama()
                 }
-                .keyboardShortcut("l", modifiers: .option)
+                .keyboardShortcut("l", modifiers: [.command, .option])
 
                 Divider()
 
@@ -290,16 +294,16 @@ struct NoteroApp: App {
     }
 
     private func exportAsPDF() {
-        guard appState.selectedNoteURL != nil else { return }
+        guard let selectedURL = noteState?.selectedNoteURL else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
-        let defaultName = appState.selectedNoteURL?.deletingPathExtension().lastPathComponent ?? "note"
+        let defaultName = selectedURL.deletingPathExtension().lastPathComponent
         panel.nameFieldStringValue = defaultName
         panel.directoryURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
 
         guard panel.runModal() == .OK, let saveURL = panel.url else { return }
 
-        let noteName = appState.selectedNoteURL?.deletingPathExtension().lastPathComponent ?? "Note"
+        let noteName = selectedURL.deletingPathExtension().lastPathComponent
         let dateString = Date().formatted(.dateTime.month(.abbreviated).day().year())
 
         let pdfCSS = """
@@ -309,7 +313,7 @@ struct NoteroApp: App {
             text-align: center; font-size: 10px; color: #999; padding: 10px; }
         """
 
-        let content = appState.currentContent
+        let content = noteState?.currentContent ?? ""
         let firstLine = content.components(separatedBy: .newlines).first?.trimmingCharacters(in: .whitespaces) ?? ""
         var titleHTML = ""
         if !firstLine.hasPrefix("# ") {
@@ -330,12 +334,14 @@ struct NoteroApp: App {
     }
 
     private func exportAsDOCX() {
-        guard appState.selectedNoteURL != nil else { return }
-        let noteName = appState.selectedNoteURL?.deletingPathExtension().lastPathComponent ?? "note"
+        guard let selectedURL = noteState?.selectedNoteURL else { return }
+        let noteName = selectedURL.deletingPathExtension().lastPathComponent
 
         // Check for pandoc
         let pandocAvailable = FileManager.default.fileExists(atPath: "/opt/homebrew/bin/pandoc")
             || FileManager.default.fileExists(atPath: "/usr/local/bin/pandoc")
+
+        let currentContent = noteState?.currentContent ?? ""
 
         if pandocAvailable {
             let panel = NSSavePanel()
@@ -346,7 +352,7 @@ struct NoteroApp: App {
             // Write temp markdown file
             let tempDir = FileManager.default.temporaryDirectory
             let tempMD = tempDir.appendingPathComponent("\(UUID().uuidString).md")
-            try? appState.currentContent.write(to: tempMD, atomically: true, encoding: .utf8)
+            try? currentContent.write(to: tempMD, atomically: true, encoding: .utf8)
 
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/bin/zsh")
@@ -365,7 +371,7 @@ struct NoteroApp: App {
             panel.nameFieldStringValue = noteName
             guard panel.runModal() == .OK, let saveURL = panel.url else { return }
 
-            let attrString = NSAttributedString(string: appState.currentContent, attributes: [
+            let attrString = NSAttributedString(string: currentContent, attributes: [
                 .font: NSFont.systemFont(ofSize: 14),
                 .foregroundColor: NSColor.textColor
             ])
@@ -377,15 +383,15 @@ struct NoteroApp: App {
     }
 
     private func exportAsHTML() {
-        guard appState.selectedNoteURL != nil else { return }
-        let noteName = appState.selectedNoteURL?.deletingPathExtension().lastPathComponent ?? "note"
+        guard let selectedURL = noteState?.selectedNoteURL else { return }
+        let noteName = selectedURL.deletingPathExtension().lastPathComponent
 
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.html]
         panel.nameFieldStringValue = noteName
         guard panel.runModal() == .OK, let saveURL = panel.url else { return }
 
-        let content = appState.currentContent
+        let content = noteState?.currentContent ?? ""
         let htmlContent = MarkdownRenderer.renderHTML(from: content)
         let description = String(content.prefix(160)).replacingOccurrences(of: "\n", with: " ")
 
@@ -435,14 +441,14 @@ struct NoteroApp: App {
         let hostingController = NSHostingController(rootView: statsView)
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Vault Statistics"
-        window.setContentSize(NSSize(width: 750, height: 600))
+        window.setContentSize(NSSize(width: 900, height: 650))
         window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
         window.center()
         window.makeKeyAndOrderFront(nil)
     }
 
     private func toggleFavorite() {
-        guard let url = appState.selectedNoteURL else { return }
+        guard let url = noteState?.selectedNoteURL else { return }
         let path = appState.favoritesManager.relativePath(
             for: url, vaultURL: appState.vaultManager.vaultURL
         )
@@ -450,11 +456,13 @@ struct NoteroApp: App {
     }
 
     private func insertMarkdown(_ prefix: String, _ suffix: String) {
-        appState.currentContent += prefix + suffix
+        noteState?.currentContent += prefix + suffix
     }
 
     private func insertLinePrefix(_ prefix: String) {
-        appState.currentContent = prefix + appState.currentContent
+        if let content = noteState?.currentContent {
+            noteState?.currentContent = prefix + content
+        }
     }
 
     // MARK: - URL Scheme
@@ -494,7 +502,7 @@ struct NoteroApp: App {
         for file in files {
             let meta = NoteMetadataService.shared.metadata(for: file)
             if meta.id == id {
-                appState.openNote(url: file)
+                appState.openNoteInActiveWindow(url: file)
                 return
             }
         }
@@ -509,7 +517,7 @@ struct NoteroApp: App {
         if let exact = files.first(where: {
             $0.deletingPathExtension().lastPathComponent.lowercased() == nameLower
         }) {
-            appState.openNote(url: exact)
+            appState.openNoteInActiveWindow(url: exact)
             return
         }
 
@@ -517,7 +525,7 @@ struct NoteroApp: App {
         if let fuzzy = files.first(where: {
             $0.deletingPathExtension().lastPathComponent.lowercased().contains(nameLower)
         }) {
-            appState.openNote(url: fuzzy)
+            appState.openNoteInActiveWindow(url: fuzzy)
             return
         }
 
@@ -536,7 +544,7 @@ struct NoteroApp: App {
         try? noteContent.write(to: fileURL, atomically: true, encoding: .utf8)
         _ = NoteMetadataService.shared.ensureID(for: fileURL)
         appState.vaultManager.loadFileTree()
-        appState.openNote(url: fileURL)
+        appState.openNoteInActiveWindow(url: fileURL)
     }
 
     private func showNoteNotFoundAlert(identifier: String) {

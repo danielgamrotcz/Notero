@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EmptyStateView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var noteState: NoteState
 
     var body: some View {
         VStack(spacing: 16) {
@@ -16,7 +17,7 @@ struct EmptyStateView: View {
                 .foregroundStyle(.secondary)
 
             Button("New Note") {
-                appState.createNewNote()
+                noteState.createNewNote()
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)

@@ -19,6 +19,6 @@ struct SettingsView: View {
                     Label("AI", systemImage: "sparkles")
                 }
         }
-        .frame(width: 520, height: 550)
+        .frame(width: 520, height: 620)
     }
 }

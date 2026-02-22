@@ -5,7 +5,7 @@ struct GeneralSettingsView: View {
     @EnvironmentObject var appState: AppState
     private let updater: SPUUpdater
 
-    private let labelWidth: CGFloat = 130
+    private let labelWidth: CGFloat = 120
 
     init(updater: SPUUpdater) {
         self.updater = updater
@@ -39,7 +39,7 @@ struct GeneralSettingsView: View {
                             .frame(width: labelWidth, alignment: .trailing)
                         TextField("", text: $appState.defaultNoteName)
                             .textFieldStyle(.roundedBorder)
-                            .frame(width: 180)
+                            .frame(width: 200)
                         Spacer()
                     }
 
@@ -47,7 +47,7 @@ struct GeneralSettingsView: View {
                         Text("Font size")
                             .frame(width: labelWidth, alignment: .trailing)
                         Slider(value: $appState.fontSize, in: 12...20, step: 1)
-                            .frame(width: 140)
+                            .frame(width: 160)
                         Text("\(Int(appState.fontSize)) pt")
                             .monospacedDigit()
                             .foregroundColor(.secondary)
@@ -59,7 +59,7 @@ struct GeneralSettingsView: View {
                         Text("Auto-save delay")
                             .frame(width: labelWidth, alignment: .trailing)
                         Slider(value: $appState.autoSaveDelay, in: 0.5...5.0, step: 0.5)
-                            .frame(width: 140)
+                            .frame(width: 160)
                         Text("\(appState.autoSaveDelay, specifier: "%.1f") s")
                             .monospacedDigit()
                             .foregroundColor(.secondary)

@@ -10,7 +10,7 @@ actor OllamaService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 120
 
         let body: [String: Any] = [
             "model": model,

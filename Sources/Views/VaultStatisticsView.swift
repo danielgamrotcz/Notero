@@ -63,21 +63,23 @@ struct VaultStatisticsView: View {
                             )
                             .foregroundStyle(Color.accentColor)
                         }
-                        .frame(height: CGFloat(max(100, stats.notesPerFolder.count * 30)))
+                        .frame(height: min(300, CGFloat(max(100, stats.notesPerFolder.count * 30))))
                         .padding(.vertical, 8)
                     }
                 }
 
                 // Activity Heatmap
                 GroupBox("Writing Activity (Last 52 Weeks)") {
-                    ActivityHeatmapView(data: stats.dailyActivity)
-                        .frame(height: 130)
-                        .padding(.vertical, 8)
+                    GeometryReader { geo in
+                        ActivityHeatmapView(data: stats.dailyActivity, availableWidth: geo.size.width)
+                    }
+                    .frame(height: 140)
+                    .padding(.vertical, 8)
                 }
             }
             .padding(20)
         }
-        .frame(minWidth: 700, minHeight: 500)
+        .frame(minWidth: 750, minHeight: 550)
         .background(Color(nsColor: NSColor(red: 0x1C/255, green: 0x1C/255, blue: 0x1E/255, alpha: 1)))
         .onAppear { computeStats() }
     }
@@ -222,12 +224,19 @@ struct VaultStatisticsView: View {
 
 struct ActivityHeatmapView: View {
     let data: [DailyWordCount]
+    var availableWidth: CGFloat? = nil
     @State private var hoveredDay: DailyWordCount?
 
     var body: some View {
         let calendar = Calendar.current
         let cellSize: CGFloat = 14
         let gap: CGFloat = 2
+
+        let maxWeeks: Int = if let availableWidth {
+            min(53, Int(availableWidth / (cellSize + gap)))
+        } else {
+            53
+        }
 
         VStack(alignment: .leading, spacing: 2) {
             // Tooltip
@@ -241,7 +250,7 @@ struct ActivityHeatmapView: View {
             }
 
             Canvas { context, size in
-                let weeks = min(53, data.count / 7 + 1)
+                let weeks = min(maxWeeks, data.count / 7 + 1)
                 for (index, day) in data.suffix(weeks * 7).enumerated() {
                     let weekIndex = index / 7
                     let dayIndex = index % 7
@@ -260,7 +269,7 @@ struct ActivityHeatmapView: View {
                     }
                 }
             }
-            .frame(width: 53 * (cellSize + gap), height: 7 * (cellSize + gap))
+            .frame(width: CGFloat(maxWeeks) * (cellSize + gap), height: 7 * (cellSize + gap))
         }
     }
 

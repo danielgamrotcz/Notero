@@ -10,7 +10,7 @@ struct AISettingsView: View {
     @State private var ollamaModels: [String] = []
     @State private var ollamaTestStatus = ""
 
-    private let labelWidth: CGFloat = 100
+    private let labelWidth: CGFloat = 120
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {

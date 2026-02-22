@@ -13,13 +13,8 @@ final class AppState: ObservableObject {
     let favoritesManager = FavoritesManager()
     let semanticSearchService = SemanticSearchService()
 
-    // Note State
-    @Published var selectedNoteURL: URL?
-    @Published var currentContent: String = ""
-    @Published var currentNoteID: String?
-    @Published var currentNoteCreated: Date?
-    @Published var currentNoteModified: Date?
-    @Published var isPreviewMode: Bool = false
+    // Per-window NoteState registry
+    private var noteStates = NSHashTable<NoteState>.weakObjects()
 
     // UI State
     @Published var showSidebar: Bool = true
@@ -31,13 +26,11 @@ final class AppState: ObservableObject {
     @Published var showNoteHistory: Bool = false
     @Published var showLineNumbers: Bool = false
     @Published var fontSize: CGFloat = 14
-    @Published var aiStatus: String = ""
-    @Published var isAIWorking: Bool = false
     @Published var renamingItemURL: URL?
     @Published var renamingIsNew: Bool = false
-    @Published var isEditing: Bool = false
-    @Published var pendingSearchHighlight: String?
     @Published var focusedFolderURL: URL?
+    @Published var folderToExpand: URL?
+    @Published var focusSidebarSearch = false
 
     // Settings
     @Published var defaultNoteName: String
@@ -102,15 +95,34 @@ final class AppState: ObservableObject {
         setupSettingsSync()
         syncVaultPathToAppGroup()
 
+        // Dispatch auto-save completion to the correct per-window NoteState
         autoSaveService.onDidSave = { [weak self] content, url in
-            self?.isEditing = false
-            self?.currentNoteModified = Date()
-            self?.autoTitleRenameIfNeeded(content: content, url: url)
+            guard let self = self else { return }
+            for noteState in self.noteStates.allObjects {
+                noteState.handleAutoSaveCompletion(content: content, url: url)
+            }
+        }
+
+        vaultManager.onFileSystemChange = { [weak self] in
+            guard let self = self else { return }
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                await self.searchService.buildIndex()
+            }
         }
 
         Task {
             await searchService.buildIndex()
         }
+    }
+
+    func registerNoteState(_ noteState: NoteState) {
+        noteStates.add(noteState)
+    }
+
+    /// Convenience for auxiliary windows (graph, URL scheme) that don't have their own NoteState
+    func openNoteInActiveWindow(url: URL) {
+        noteStates.allObjects.first?.openNote(url: url)
     }
 
     private func setupSettingsSync() {
@@ -142,42 +154,7 @@ final class AppState: ObservableObject {
             .store(in: &cancellables)
     }
 
-    // MARK: - Note Operations
-
-    func openNote(url: URL) {
-        // Save current before switching
-        if let currentURL = selectedNoteURL {
-            autoSaveService.saveImmediately(content: currentContent, to: currentURL)
-        }
-
-        if let content = vaultManager.readNote(at: url) {
-            currentContent = content
-            selectedNoteURL = url
-
-            // Assign unique ID lazily and load dates
-            let meta = NoteMetadataService.shared.metadata(for: url)
-            currentNoteID = meta.id
-            currentNoteCreated = meta.created
-            let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
-            currentNoteModified = attrs?[.modificationDate] as? Date
-
-            // Restore mode preference
-            let modeKey = "mode-\(url.lastPathComponent)"
-            isPreviewMode = UserDefaults.standard.bool(forKey: modeKey)
-
-            linkResolver.findBacklinks(for: url)
-        }
-    }
-
-    func createNewNote(in folderURL: URL? = nil) {
-        if let url = vaultManager.createNote(named: defaultNoteName, in: folderURL) {
-            _ = NoteMetadataService.shared.ensureID(for: url)
-            openNote(url: url)
-            Task {
-                await searchService.reindex(url: url)
-            }
-        }
-    }
+    // MARK: - Folder Operations
 
     func createNewFolder(in folderURL: URL? = nil) {
         let parent = folderURL ?? vaultManager.vaultURL
@@ -188,8 +165,12 @@ final class AppState: ObservableObject {
             name = "New Folder \(counter)"
         }
         if let url = vaultManager.createFolder(named: name, in: folderURL) {
-            renamingIsNew = true
-            renamingItemURL = url
+            folderToExpand = parent
+            // Delay rename to allow folder expansion to render first
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                self?.renamingIsNew = true
+                self?.renamingItemURL = url
+            }
         }
     }
 
@@ -200,156 +181,15 @@ final class AppState: ObservableObject {
             return
         }
         if let newURL = vaultManager.renameItem(at: url, to: trimmed) {
-            if selectedNoteURL == url {
-                selectedNoteURL = newURL
+            // Update selectedNoteURL in matching NoteState
+            for noteState in noteStates.allObjects {
+                if noteState.selectedNoteURL == url {
+                    noteState.selectedNoteURL = newURL
+                }
             }
         }
         renamingIsNew = false
         renamingItemURL = nil
-    }
-
-    func saveCurrentNote() {
-        guard let url = selectedNoteURL else { return }
-        autoSaveService.saveImmediately(content: currentContent, to: url)
-        NoteHistoryService.shared.saveSnapshot(content: currentContent, for: url)
-        Task {
-            await searchService.reindex(url: url)
-        }
-        autoTitleRenameIfNeeded(content: currentContent, url: url)
-    }
-
-    private func autoTitleRenameIfNeeded(content: String, url: URL) {
-        guard autoTitleFromH1 else { return }
-
-        let firstLine = content.components(separatedBy: .newlines).first ?? ""
-        let trimmed = firstLine.trimmingCharacters(in: .whitespaces)
-        guard trimmed.range(of: "^#\\s+(.+)$", options: .regularExpression) != nil else { return }
-
-        let titleStart = trimmed.index(trimmed.startIndex, offsetBy: trimmed.hasPrefix("# ") ? 2 : 0)
-        var title = String(trimmed[titleStart...]).trimmingCharacters(in: .whitespaces)
-
-        // Strip remaining Markdown
-        title = title.replacingOccurrences(of: "\\*+", with: "", options: .regularExpression)
-        title = title.replacingOccurrences(of: "`", with: "")
-        title = title.replacingOccurrences(of: "[\\[\\]]", with: "", options: .regularExpression)
-
-        // Replace invalid filename chars
-        let invalidChars = CharacterSet(charactersIn: ":/\\?*\"<>|")
-        title = title.unicodeScalars.map { invalidChars.contains($0) ? "-" : String($0) }.joined()
-
-        // Collapse whitespace/hyphens and trim
-        title = title.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-        title = title.replacingOccurrences(of: "-{2,}", with: "-", options: .regularExpression)
-        title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !title.isEmpty else { return }
-
-        // Truncate at word boundary, max 80 chars
-        if title.count > 80 {
-            title = String(title.prefix(80))
-            if let lastSpace = title.lastIndex(of: " ") {
-                title = String(title[..<lastSpace])
-            }
-        }
-
-        let newFilename = "\(title).md"
-        let currentFilename = url.lastPathComponent
-
-        guard newFilename != currentFilename else { return }
-
-        // Check for conflicts
-        var targetURL = url.deletingLastPathComponent().appendingPathComponent(newFilename)
-        if FileManager.default.fileExists(atPath: targetURL.path) && targetURL != url {
-            var counter = 2
-            while FileManager.default.fileExists(atPath: targetURL.path) {
-                targetURL = url.deletingLastPathComponent().appendingPathComponent("\(title) \(counter).md")
-                counter += 1
-            }
-        }
-
-        // Perform rename
-        do {
-            try FileManager.default.moveItem(at: url, to: targetURL)
-            selectedNoteURL = targetURL
-            NoteMetadataService.shared.updatePath(from: url, to: targetURL)
-            vaultManager.loadFileTree()
-        } catch {
-            Log.vault.error("Auto-title rename failed: \(error.localizedDescription)")
-        }
-    }
-
-    func openNewTab() {
-        guard let window = NSApp.keyWindow else { return }
-        // Save current note before opening new tab
-        if let currentURL = selectedNoteURL {
-            autoSaveService.saveImmediately(content: currentContent, to: currentURL)
-        }
-        window.newWindowForTab(nil)
-    }
-
-    func togglePreview() {
-        isPreviewMode.toggle()
-        if let url = selectedNoteURL {
-            UserDefaults.standard.set(isPreviewMode, forKey: "mode-\(url.lastPathComponent)")
-        }
-    }
-
-    // MARK: - AI
-
-    func improveWithClaude() {
-        guard let apiKey = KeychainManager.load(key: "NoteroAnthropicKey"), !apiKey.isEmpty else {
-            aiStatus = "No API key set. Go to Settings → AI."
-            return
-        }
-        improveText(using: .claude(apiKey: apiKey, model: claudeModel))
-    }
-
-    func improveWithOllama() {
-        improveText(using: .ollama(serverURL: ollamaServerURL, model: ollamaModel))
-    }
-
-    private enum AIProvider {
-        case claude(apiKey: String, model: String)
-        case ollama(serverURL: String, model: String)
-    }
-
-    private func improveText(using provider: AIProvider) {
-        guard !currentContent.isEmpty else { return }
-
-        isAIWorking = true
-        aiStatus = "AI improving..."
-
-        let textToImprove = currentContent
-        let prompt = aiPrompt
-
-        Task {
-            do {
-                let improved: String
-                switch provider {
-                case .claude(let apiKey, let model):
-                    improved = try await anthropicService.improve(
-                        text: textToImprove, model: model,
-                        apiKey: apiKey, prompt: prompt
-                    )
-                case .ollama(let serverURL, let model):
-                    improved = try await ollamaService.improve(
-                        text: textToImprove, model: model,
-                        serverURL: serverURL, prompt: prompt
-                    )
-                }
-                // Post notification so the editor replaces via undo manager
-                NotificationCenter.default.post(
-                    name: .aiTextImproved,
-                    object: nil,
-                    userInfo: ["text": improved]
-                )
-                aiStatus = "AI improvement applied"
-                isAIWorking = false
-            } catch {
-                aiStatus = error.localizedDescription
-                isAIWorking = false
-            }
-        }
     }
 }
 

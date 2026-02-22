@@ -2,8 +2,8 @@ import SwiftUI
 
 struct FileTreeView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var noteState: NoteState
     let nodes: [FileTreeNode]
-    var focusedItemID: Binding<URL?>?
     var expandedFolders: Binding<Set<URL>>?
 
     var body: some View {
@@ -20,15 +20,14 @@ struct FileTreeView: View {
                         }
                     }
                 )
-                let isFocused = focusedItemID?.wrappedValue == folderNode.url
 
                 DisclosureGroup(isExpanded: isExpanded) {
                     FileTreeView(
                         nodes: folderNode.children,
-                        focusedItemID: focusedItemID,
                         expandedFolders: expandedFolders
                     )
                     .environmentObject(appState)
+                    .environmentObject(noteState)
                     .padding(.leading, 4)
                 } label: {
                     if appState.renamingItemURL == folderNode.url {
@@ -40,17 +39,15 @@ struct FileTreeView: View {
                         .environmentObject(appState)
                     } else {
                         FileTreeRowView(node: node, isSelected: false)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(isFocused ? Color.accentColor.opacity(0.1) : Color.clear)
-                            )
+                            .onTapGesture {
+                                isExpanded.wrappedValue.toggle()
+                            }
                     }
                 }
                 .contextMenu { folderContextMenu(folder: folderNode) }
 
             case .file(let fileNode):
-                let selected = appState.selectedNoteURL == fileNode.url
-                let isFocused = focusedItemID?.wrappedValue == fileNode.url
+                let selected = noteState.selectedNoteURL == fileNode.url
                 if appState.renamingItemURL == fileNode.url {
                     InlineRenameField(
                         url: fileNode.url,
@@ -65,12 +62,11 @@ struct FileTreeView: View {
                     )
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(selected ? Color.accentColor :
-                                    (isFocused ? Color.accentColor.opacity(0.1) : Color.clear))
+                            .fill(selected ? Color.accentColor : Color.clear)
                     )
                     .gesture(
                         TapGesture().onEnded {
-                            appState.openNote(url: fileNode.url)
+                            noteState.openNote(url: fileNode.url)
                         }
                     )
                     .contextMenu { fileContextMenu(fileNode: fileNode) }
@@ -108,9 +104,9 @@ struct FileTreeView: View {
         Divider()
         Button("Move to Trash") {
             appState.vaultManager.moveToTrash(url: fileNode.url)
-            if appState.selectedNoteURL == fileNode.url {
-                appState.selectedNoteURL = nil
-                appState.currentContent = ""
+            if noteState.selectedNoteURL == fileNode.url {
+                noteState.selectedNoteURL = nil
+                noteState.currentContent = ""
             }
         }
         Divider()
@@ -137,7 +133,7 @@ struct FileTreeView: View {
     @ViewBuilder
     private func folderContextMenu(folder: FolderNode) -> some View {
         Button("New Note") {
-            appState.createNewNote(in: folder.url)
+            noteState.createNewNote(in: folder.url)
         }
         Button("New Folder") {
             appState.createNewFolder(in: folder.url)

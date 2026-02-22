@@ -91,7 +91,7 @@ struct GraphWebView: NSViewRepresentable {
             guard message.name == "nodeClick", let path = message.body as? String else { return }
             let url = appState.vaultManager.vaultURL.appendingPathComponent(path)
             Task { @MainActor in
-                appState.openNote(url: url)
+                appState.openNoteInActiveWindow(url: url)
                 NSApp.windows.first?.makeKeyAndOrderFront(nil)
             }
         }

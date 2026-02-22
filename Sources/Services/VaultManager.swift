@@ -10,6 +10,7 @@ final class VaultManager: ObservableObject {
     private var fsEventStream: FSEventStreamRef?
     private let fileManager = FileManager.default
     var currentSortOrder: NoteSortOrder = .nameAscending
+    var onFileSystemChange: (() -> Void)?
 
     init() {
         if let savedPath = UserDefaults.standard.string(forKey: "vaultPath") {
@@ -253,6 +254,7 @@ final class VaultManager: ObservableObject {
             print("[VaultManager] FSEvent fired, \(numEvents) events")
             Task { @MainActor in
                 manager.loadFileTree()
+                manager.onFileSystemChange?()
             }
         }
 

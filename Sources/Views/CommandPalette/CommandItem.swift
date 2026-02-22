@@ -9,10 +9,10 @@ struct CommandItem: Identifiable {
     let action: @MainActor () -> Void
 
     @MainActor
-    static func allCommands(appState: AppState) -> [CommandItem] {
+    static func allCommands(appState: AppState, noteState: NoteState) -> [CommandItem] {
         [
             CommandItem(name: "New Note", icon: "doc.badge.plus", shortcut: "Cmd+N") {
-                appState.createNewNote()
+                noteState.createNewNote()
             },
             CommandItem(name: "New Folder", icon: "folder.badge.plus", shortcut: "Cmd+Shift+N") {
                 _ = appState.vaultManager.createFolder(named: "New Folder")
@@ -24,7 +24,7 @@ struct CommandItem: Identifiable {
                 appState.showSidebar.toggle()
             },
             CommandItem(name: "Toggle Preview", icon: "eye", shortcut: "Cmd+E") {
-                appState.togglePreview()
+                noteState.togglePreview()
             },
             CommandItem(name: "Toggle Line Numbers", icon: "list.number", shortcut: nil) {
                 appState.showLineNumbers.toggle()
@@ -36,16 +36,16 @@ struct CommandItem: Identifiable {
                 appState.showSidebar = true
             },
             CommandItem(name: "Improve with AI – Claude", icon: "sparkles", shortcut: "Option+A") {
-                appState.improveWithClaude()
+                noteState.improveWithClaude()
             },
             CommandItem(name: "Improve with AI – Local", icon: "cpu", shortcut: "Option+L") {
-                appState.improveWithOllama()
+                noteState.improveWithOllama()
             },
             CommandItem(name: "Export Note as PDF", icon: "arrow.down.doc", shortcut: nil) {
                 // PDF export handled in menu
             },
             CommandItem(name: "Copy Note as HTML", icon: "doc.richtext", shortcut: nil) {
-                let html = MarkdownRenderer.renderHTML(from: appState.currentContent)
+                let html = MarkdownRenderer.renderHTML(from: noteState.currentContent)
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(html, forType: .string)
             },

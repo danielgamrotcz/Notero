@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NoteHistoryView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var noteState: NoteState
     @Binding var isPresented: Bool
 
     @State private var snapshots: [NoteSnapshot] = []
@@ -59,8 +60,8 @@ struct NoteHistoryView: View {
                         if let snapshot = selectedSnapshot {
                             HStack {
                                 Button("Restore this version") {
-                                    appState.currentContent = snapshot.content
-                                    if let url = appState.selectedNoteURL {
+                                    noteState.currentContent = snapshot.content
+                                    if let url = noteState.selectedNoteURL {
                                         appState.autoSaveService.saveImmediately(
                                             content: snapshot.content, to: url
                                         )
@@ -102,13 +103,13 @@ struct NoteHistoryView: View {
         }
         .frame(width: 700, height: 500)
         .onAppear {
-            guard let url = appState.selectedNoteURL else { return }
+            guard let url = noteState.selectedNoteURL else { return }
             snapshots = NoteHistoryService.shared.loadSnapshots(for: url)
         }
     }
 
     private func diffView(snapshot: NoteSnapshot) -> some View {
-        let diffLines = NoteHistoryService.diff(old: snapshot.content, new: appState.currentContent)
+        let diffLines = NoteHistoryService.diff(old: snapshot.content, new: noteState.currentContent)
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(diffLines) { line in

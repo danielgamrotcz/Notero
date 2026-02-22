@@ -2,43 +2,45 @@ import SwiftUI
 
 struct EditorView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var noteState: NoteState
 
     var body: some View {
         VStack(spacing: 0) {
-            if appState.selectedNoteURL != nil {
+            if noteState.selectedNoteURL != nil {
                 ZStack {
                     Color(NSColor.textBackgroundColor)
 
-                    if appState.isPreviewMode {
+                    if noteState.isPreviewMode {
                         MarkdownPreviewView(
-                            content: appState.currentContent,
+                            content: noteState.currentContent,
                             onCheckboxToggle: { index in
                                 toggleCheckbox(at: index)
                             },
                             onWikilinkClick: { linkName in
                                 if let url = appState.linkResolver.resolve(linkName: linkName) {
-                                    appState.openNote(url: url)
+                                    noteState.openNote(url: url)
                                 }
                             }
                         )
                         .transition(.opacity)
                     } else {
                         MarkdownEditorView(
-                            text: $appState.currentContent,
+                            text: $noteState.currentContent,
                             fontSize: appState.fontSize,
                             showLineNumbers: appState.showLineNumbers,
                             spellCheck: appState.spellCheckEnabled,
+                            noteURL: noteState.selectedNoteURL,
                             onTextChange: { newText in
-                                guard let url = appState.selectedNoteURL else { return }
-                                appState.isEditing = true
+                                guard let url = noteState.selectedNoteURL else { return }
+                                noteState.isEditing = true
                                 appState.autoSaveService.scheduleSave(content: newText, to: url)
                             },
-                            pendingSearchHighlight: $appState.pendingSearchHighlight
+                            pendingSearchHighlight: $noteState.pendingSearchHighlight
                         )
                         .transition(.opacity)
                     }
                 }
-                .animation(.easeInOut(duration: 0.15), value: appState.isPreviewMode)
+                .animation(.easeInOut(duration: 0.15), value: noteState.isPreviewMode)
 
                 // Backlinks panel
                 if appState.showBacklinks {
@@ -49,7 +51,7 @@ struct EditorView: View {
                 // Find/Replace panel
                 if appState.showFindReplace {
                     FindReplaceView(
-                        content: $appState.currentContent,
+                        content: $noteState.currentContent,
                         isVisible: $appState.showFindReplace,
                         showReplace: appState.showFindReplaceWithReplace
                     )
@@ -59,9 +61,11 @@ struct EditorView: View {
                 // Status bar
                 StatusBarView()
                     .environmentObject(appState)
+                    .environmentObject(noteState)
             } else {
                 EmptyStateView()
                     .environmentObject(appState)
+                    .environmentObject(noteState)
             }
         }
     }
@@ -88,7 +92,7 @@ struct EditorView: View {
             } else {
                 ForEach(appState.linkResolver.backlinks) { backlink in
                     Button {
-                        appState.openNote(url: backlink.noteURL)
+                        noteState.openNote(url: backlink.noteURL)
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "doc.text")
@@ -109,7 +113,7 @@ struct EditorView: View {
     }
 
     private func toggleCheckbox(at index: Int) {
-        var lines = appState.currentContent.components(separatedBy: "\n")
+        var lines = noteState.currentContent.components(separatedBy: "\n")
         var checkboxIndex = 0
         for (i, line) in lines.enumerated() {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -126,9 +130,9 @@ struct EditorView: View {
                 checkboxIndex += 1
             }
         }
-        appState.currentContent = lines.joined(separator: "\n")
-        if let url = appState.selectedNoteURL {
-            appState.autoSaveService.saveImmediately(content: appState.currentContent, to: url)
+        noteState.currentContent = lines.joined(separator: "\n")
+        if let url = noteState.selectedNoteURL {
+            appState.autoSaveService.saveImmediately(content: noteState.currentContent, to: url)
         }
     }
 }

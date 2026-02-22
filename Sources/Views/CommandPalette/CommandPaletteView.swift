@@ -2,13 +2,15 @@ import SwiftUI
 
 struct CommandPaletteView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var noteState: NoteState
     @State private var query = ""
     @State private var selectedIndex = 0
     @State private var noteResults: [(name: String, url: URL)] = []
+    @FocusState private var isSearchFocused: Bool
     let notesOnly: Bool
 
     private var commands: [CommandItem] {
-        CommandItem.allCommands(appState: appState)
+        CommandItem.allCommands(appState: appState, noteState: noteState)
     }
 
     private var filteredCommands: [CommandItem] {
@@ -31,6 +33,7 @@ struct CommandPaletteView: View {
                 TextField(notesOnly ? "Open note..." : "Type a command or note name...", text: $query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 16))
+                    .focused($isSearchFocused)
                     .onSubmit { executeSelected() }
                 if !query.isEmpty {
                     Button { query = "" } label: {
@@ -62,7 +65,7 @@ struct CommandPaletteView: View {
                                 shortcut: nil,
                                 isSelected: offset == selectedIndex
                             ) {
-                                appState.openNote(url: note.url)
+                                noteState.openNote(url: note.url)
                                 dismiss()
                             }
                         }
@@ -120,6 +123,7 @@ struct CommandPaletteView: View {
         }
         .onAppear {
             updateNoteResults(query: "")
+            isSearchFocused = true
         }
     }
 
@@ -155,7 +159,7 @@ struct CommandPaletteView: View {
 
     private func executeSelected() {
         if selectedIndex < noteResults.count {
-            appState.openNote(url: noteResults[selectedIndex].url)
+            noteState.openNote(url: noteResults[selectedIndex].url)
         } else {
             let cmdIndex = selectedIndex - noteResults.count
             if cmdIndex < filteredCommands.count {

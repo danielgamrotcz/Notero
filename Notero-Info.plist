@@ -32,7 +32,9 @@
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://danielgamrot.cz/notero/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/danielgamrotcz/Notero/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>0lnSWzrHi/jMbv7ZSZSB9VZ+id4iRJN2lAhwYEXrTYQ=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
 </dict>

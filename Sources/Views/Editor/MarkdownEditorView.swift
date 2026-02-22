@@ -6,6 +6,7 @@ struct MarkdownEditorView: NSViewRepresentable {
     let fontSize: CGFloat
     let showLineNumbers: Bool
     let spellCheck: Bool
+    let noteURL: URL?
     var onTextChange: ((String) -> Void)?
     var pendingSearchHighlight: Binding<String?>?
 
@@ -62,17 +63,41 @@ struct MarkdownEditorView: NSViewRepresentable {
         context.coordinator.textView = textView
         context.coordinator.applyFullHighlighting()
 
+        // Observe scroll position changes
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.handleScrollChange(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+
         return scrollView
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? MarkdownTextView else { return }
+        let coordinator = context.coordinator
 
         if textView.string != text {
+            // Save scroll position for the old note
+            if let oldURL = coordinator.currentURL {
+                coordinator.scrollPositions[oldURL] = coordinator.lastKnownScrollY
+            }
+
             let selectedRanges = textView.selectedRanges
             textView.string = text
             textView.selectedRanges = selectedRanges
-            context.coordinator.applyFullHighlighting()
+            coordinator.applyFullHighlighting()
+
+            // Restore scroll position for the new note
+            coordinator.currentURL = noteURL
+            let savedY = noteURL.flatMap { coordinator.scrollPositions[$0] }
+            DispatchQueue.main.async {
+                let point = NSPoint(x: 0, y: savedY ?? 0)
+                scrollView.contentView.scroll(to: point)
+                scrollView.reflectScrolledClipView(scrollView.contentView)
+            }
 
             if textView.window?.firstResponder != textView {
                 DispatchQueue.main.async {
@@ -114,15 +139,24 @@ struct MarkdownEditorView: NSViewRepresentable {
         var parent: MarkdownEditorView
         weak var textView: MarkdownTextView?
         private var highlighter: MarkdownHighlighter
+        var scrollPositions: [URL: CGFloat] = [:]
+        var currentURL: URL?
+        var lastKnownScrollY: CGFloat = 0
 
         init(_ parent: MarkdownEditorView) {
             self.parent = parent
             self.highlighter = MarkdownHighlighter(fontSize: parent.fontSize)
+            self.currentURL = parent.noteURL
             super.init()
             NotificationCenter.default.addObserver(
                 self, selector: #selector(handleAIImprovement(_:)),
                 name: .aiTextImproved, object: nil
             )
+        }
+
+        @objc func handleScrollChange(_ notification: Notification) {
+            guard let clipView = notification.object as? NSClipView else { return }
+            lastKnownScrollY = clipView.bounds.origin.y
         }
 
         @objc private func handleAIImprovement(_ notification: Notification) {

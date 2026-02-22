@@ -1,7 +1,19 @@
 import SwiftUI
 
+struct WindowConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            view.window?.tabbingMode = .preferred
+        }
+        return view
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
+    @StateObject private var noteState = NoteState()
 
     var body: some View {
         ZStack {
@@ -9,11 +21,13 @@ struct ContentView: View {
                 if appState.showSidebar {
                     SidebarView()
                         .environmentObject(appState)
+                        .environmentObject(noteState)
                         .frame(minWidth: 180, idealWidth: 220, maxWidth: 400)
                 }
             } detail: {
                 EditorView()
                     .environmentObject(appState)
+                    .environmentObject(noteState)
             }
             .navigationSplitViewStyle(.balanced)
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -32,7 +46,21 @@ struct ContentView: View {
         .sheet(isPresented: $appState.showNoteHistory) {
             NoteHistoryView(isPresented: $appState.showNoteHistory)
                 .environmentObject(appState)
+                .environmentObject(noteState)
         }
+        .background(WindowConfigurator())
+        .focusedObject(noteState)
+        .navigationTitle(windowTitle)
+        .onAppear {
+            noteState.configure(appState: appState)
+        }
+    }
+
+    private var windowTitle: String {
+        if let url = noteState.selectedNoteURL {
+            return url.deletingPathExtension().lastPathComponent
+        }
+        return "Notero"
     }
 
     private func commandPaletteOverlay(notesOnly: Bool) -> some View {
@@ -47,6 +75,7 @@ struct ContentView: View {
             VStack {
                 CommandPaletteView(notesOnly: notesOnly)
                     .environmentObject(appState)
+                    .environmentObject(noteState)
                 Spacer()
             }
             .padding(.top, 80)

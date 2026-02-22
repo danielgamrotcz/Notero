@@ -76,7 +76,8 @@ struct MarkdownHighlighter {
             .font: bodyFont,
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: defaultParagraph,
-            .backgroundColor: NSColor.clear
+            .backgroundColor: NSColor.clear,
+            .strikethroughStyle: 0
         ], range: workRange)
 
         // Apply patterns
@@ -103,7 +104,8 @@ struct MarkdownHighlighter {
             .font: bodyFont,
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: defaultParagraph,
-            .backgroundColor: NSColor.clear
+            .backgroundColor: NSColor.clear,
+            .strikethroughStyle: 0
         ], range: fullRange)
 
         applyHeadings(storage: storage, string: fullString, range: fullRange)
