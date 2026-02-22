@@ -21,7 +21,7 @@ struct CommandItem: Identifiable {
                 appState.vaultManager.revealInFinder(url: appState.vaultManager.vaultURL)
             },
             CommandItem(name: "Toggle Sidebar", icon: "sidebar.leading", shortcut: "Cmd+Shift+L") {
-                appState.showSidebar.toggle()
+                appState.sidebarVisibility = appState.sidebarVisibility == .detailOnly ? .automatic : .detailOnly
             },
             CommandItem(name: "Toggle Preview", icon: "eye", shortcut: "Cmd+E") {
                 noteState.togglePreview()
@@ -33,7 +33,7 @@ struct CommandItem: Identifiable {
                 appState.showBacklinks.toggle()
             },
             CommandItem(name: "Focus Search", icon: "magnifyingglass", shortcut: "Cmd+Shift+F") {
-                appState.showSidebar = true
+                appState.sidebarVisibility = .automatic
             },
             CommandItem(name: "Improve with AI – Claude", icon: "sparkles", shortcut: "Option+A") {
                 noteState.improveWithClaude()

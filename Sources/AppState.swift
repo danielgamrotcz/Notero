@@ -17,7 +17,7 @@ final class AppState: ObservableObject {
     private var noteStates = NSHashTable<NoteState>.weakObjects()
 
     // UI State
-    @Published var showSidebar: Bool = true
+    @Published var sidebarVisibility: NavigationSplitViewVisibility = .automatic
     @Published var showBacklinks: Bool = false
     @Published var showCommandPalette: Bool = false
     @Published var showQuickOpen: Bool = false

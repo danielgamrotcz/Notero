@@ -17,13 +17,11 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            NavigationSplitView {
-                if appState.showSidebar {
-                    SidebarView()
-                        .environmentObject(appState)
-                        .environmentObject(noteState)
-                        .frame(minWidth: 180, idealWidth: 220, maxWidth: 400)
-                }
+            NavigationSplitView(columnVisibility: $appState.sidebarVisibility) {
+                SidebarView()
+                    .environmentObject(appState)
+                    .environmentObject(noteState)
+                    .frame(minWidth: 180, idealWidth: 220, maxWidth: 400)
             } detail: {
                 EditorView()
                     .environmentObject(appState)

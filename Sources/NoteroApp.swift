@@ -168,7 +168,7 @@ struct NoteroApp: App {
             // View menu
             CommandGroup(after: .toolbar) {
                 Button("Toggle Sidebar") {
-                    appState.showSidebar.toggle()
+                    appState.sidebarVisibility = appState.sidebarVisibility == .detailOnly ? .automatic : .detailOnly
                 }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
 
