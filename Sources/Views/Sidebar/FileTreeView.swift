@@ -70,12 +70,7 @@ struct FileTreeView: View {
                     )
                     .gesture(
                         TapGesture().onEnded {
-                            let flags = NSApp.currentEvent?.modifierFlags ?? []
-                            if flags.contains(.command) {
-                                appState.openNoteInNewTab(url: fileNode.url)
-                            } else {
-                                appState.openNote(url: fileNode.url)
-                            }
+                            appState.openNote(url: fileNode.url)
                         }
                     )
                     .contextMenu { fileContextMenu(fileNode: fileNode) }

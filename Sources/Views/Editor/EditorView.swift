@@ -24,7 +24,7 @@ struct EditorView: View {
                         .transition(.opacity)
                     } else {
                         MarkdownEditorView(
-                            text: appState.currentContentBinding,
+                            text: $appState.currentContent,
                             fontSize: appState.fontSize,
                             showLineNumbers: appState.showLineNumbers,
                             spellCheck: appState.spellCheckEnabled,
@@ -49,7 +49,7 @@ struct EditorView: View {
                 // Find/Replace panel
                 if appState.showFindReplace {
                     FindReplaceView(
-                        content: appState.currentContentBinding,
+                        content: $appState.currentContent,
                         isVisible: $appState.showFindReplace,
                         showReplace: appState.showFindReplaceWithReplace
                     )

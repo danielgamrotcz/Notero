@@ -15,7 +15,7 @@ struct NoteroApp: App {
                 .environmentObject(appState)
                 .frame(minWidth: 600, minHeight: 400)
                 .onAppear {
-                    NSWindow.allowsAutomaticWindowTabbing = false
+                    NSWindow.allowsAutomaticWindowTabbing = true
                 }
                 .onOpenURL { url in
                     handleURL(url)
@@ -35,25 +35,6 @@ struct NoteroApp: App {
                     appState.openNewTab()
                 }
                 .keyboardShortcut("t", modifiers: .command)
-
-                Button("Close Tab") {
-                    if appState.tabs.count > 1 {
-                        appState.closeCurrentTab()
-                    } else {
-                        NSApp.keyWindow?.performClose(nil)
-                    }
-                }
-                .keyboardShortcut("w", modifiers: .command)
-
-                Button("Next Tab") {
-                    appState.selectNextTab()
-                }
-                .keyboardShortcut("]", modifiers: [.command, .shift])
-
-                Button("Previous Tab") {
-                    appState.selectPreviousTab()
-                }
-                .keyboardShortcut("[", modifiers: [.command, .shift])
 
                 Divider()
 
