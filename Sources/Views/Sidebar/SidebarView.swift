@@ -118,6 +118,7 @@ struct SidebarView: View {
 
     @State private var favoritesExpanded = true
     @State private var favoritesExpandedFolders: Set<URL> = []
+    @State private var draggingFavorite: String?
 
     private var favoritesSection: some View {
         DisclosureGroup(isExpanded: $favoritesExpanded) {
@@ -127,8 +128,28 @@ struct SidebarView: View {
                     if let node = findNode(for: itemURL, in: appState.vaultManager.fileTree),
                        node.isFolder {
                         favoriteFolderRow(node: node, path: path)
+                            .onDrag {
+                                draggingFavorite = path
+                                return NSItemProvider(object: path as NSString)
+                            }
+                            .onDrop(of: [.text], delegate: FavoriteDropDelegate(
+                                item: path,
+                                orderedFavorites: appState.favoritesManager.orderedFavorites,
+                                draggingItem: $draggingFavorite,
+                                reorder: { appState.favoritesManager.reorder($0) }
+                            ))
                     } else {
                         favoriteFileRow(path: path, url: itemURL)
+                            .onDrag {
+                                draggingFavorite = path
+                                return NSItemProvider(object: path as NSString)
+                            }
+                            .onDrop(of: [.text], delegate: FavoriteDropDelegate(
+                                item: path,
+                                orderedFavorites: appState.favoritesManager.orderedFavorites,
+                                draggingItem: $draggingFavorite,
+                                reorder: { appState.favoritesManager.reorder($0) }
+                            ))
                     }
                 }
             }
@@ -315,6 +336,38 @@ struct SidebarView: View {
             result.append(DailyWordCount(date: date, words: count))
         }
         return result
+    }
+
+    // MARK: - Favorite Drop Delegate
+
+    private struct FavoriteDropDelegate: DropDelegate {
+        let item: String
+        let orderedFavorites: [String]
+        @Binding var draggingItem: String?
+        let reorder: ([String]) -> Void
+
+        func dropUpdated(info: DropInfo) -> DropProposal? {
+            DropProposal(operation: .move)
+        }
+
+        func performDrop(info: DropInfo) -> Bool {
+            guard let dragging = draggingItem else { return false }
+            var updated = orderedFavorites
+            guard let fromIndex = updated.firstIndex(of: dragging),
+                  let toIndex = updated.firstIndex(of: item),
+                  fromIndex != toIndex else {
+                draggingItem = nil
+                return false
+            }
+            updated.move(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
+            reorder(updated)
+            draggingItem = nil
+            return true
+        }
+
+        func dropExited(info: DropInfo) {
+            // no-op, cleanup happens in performDrop
+        }
     }
 
     // MARK: - Search Results
