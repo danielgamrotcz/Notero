@@ -8,7 +8,7 @@ final class SemanticSearchService: ObservableObject {
     @Published var indexedCount: Int = 0
     @Published var embeddingModel: String = "nomic-embed-text"
 
-    private var embeddings: [String: [Float]] = [:]
+    var embeddings: [String: [Float]] = [:]
     private var updatedAt: [String: Date] = [:]
     private let maxContentLength = 2000
 
@@ -116,7 +116,7 @@ final class SemanticSearchService: ObservableObject {
 
     // MARK: - Cosine Similarity
 
-    private func cosineSimilarity(_ a: [Float], _ b: [Float]) -> Double {
+    func cosineSimilarity(_ a: [Float], _ b: [Float]) -> Double {
         guard a.count == b.count, !a.isEmpty else { return 0 }
         var dot: Float = 0
         var normA: Float = 0

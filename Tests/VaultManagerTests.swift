@@ -97,4 +97,48 @@ final class VaultManagerTests: XCTestCase {
         let mdFiles = vaultManager.allMarkdownFiles()
         XCTAssertEqual(mdFiles.count, 2)
     }
+
+    func testMoveToTrash() {
+        let url = vaultManager.createNote(named: "TrashMe", in: tempDir)!
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+
+        vaultManager.moveToTrash(url: url)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+    }
+
+    func testSortOrder_nameAscending() {
+        _ = vaultManager.createNote(named: "Zebra", in: tempDir)
+        _ = vaultManager.createNote(named: "Apple", in: tempDir)
+        _ = vaultManager.createNote(named: "Mango", in: tempDir)
+
+        vaultManager.loadFileTree(sortOrder: .nameAscending)
+        let names = vaultManager.fileTree.filter { !$0.isFolder }.map { $0.name }
+        XCTAssertEqual(names, ["Apple", "Mango", "Zebra"])
+    }
+
+    func testSortOrder_nameDescending() {
+        _ = vaultManager.createNote(named: "Zebra", in: tempDir)
+        _ = vaultManager.createNote(named: "Apple", in: tempDir)
+        _ = vaultManager.createNote(named: "Mango", in: tempDir)
+
+        vaultManager.loadFileTree(sortOrder: .nameDescending)
+        let names = vaultManager.fileTree.filter { !$0.isFolder }.map { $0.name }
+        XCTAssertEqual(names, ["Zebra", "Mango", "Apple"])
+    }
+
+    func testSortOrder_modifiedNewest() {
+        let url1 = vaultManager.createNote(named: "Old", in: tempDir)!
+        // Set older modification date
+        let oldDate = Date().addingTimeInterval(-3600)
+        try? FileManager.default.setAttributes(
+            [.modificationDate: oldDate], ofItemAtPath: url1.path
+        )
+
+        Thread.sleep(forTimeInterval: 0.1)
+        _ = vaultManager.createNote(named: "New", in: tempDir)
+
+        vaultManager.loadFileTree(sortOrder: .modifiedNewest)
+        let names = vaultManager.fileTree.filter { !$0.isFolder }.map { $0.name }
+        XCTAssertEqual(names.first, "New")
+    }
 }

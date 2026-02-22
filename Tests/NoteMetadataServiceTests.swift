@@ -59,4 +59,25 @@ final class NoteMetadataServiceTests: XCTestCase {
         let newMeta = NoteMetadataService.shared.metadata(for: newURL)
         XCTAssertEqual(newMeta.id, originalID, "ID should survive rename")
     }
+
+    func testCreationDateFallback() {
+        let noteURL = tempDir.appendingPathComponent("fallback.md")
+        try? "Content".write(to: noteURL, atomically: true, encoding: .utf8)
+
+        let meta = NoteMetadataService.shared.metadata(for: noteURL)
+        // Should fall back to filesystem creation date, which is recent
+        XCTAssertTrue(abs(meta.created.timeIntervalSinceNow) < 10,
+                      "Creation date should be close to now (filesystem fallback)")
+    }
+
+    func testIDUniqueness() {
+        let noteA = tempDir.appendingPathComponent("unique_a.md")
+        let noteB = tempDir.appendingPathComponent("unique_b.md")
+        try? "A".write(to: noteA, atomically: true, encoding: .utf8)
+        try? "B".write(to: noteB, atomically: true, encoding: .utf8)
+
+        let idA = NoteMetadataService.shared.ensureID(for: noteA)
+        let idB = NoteMetadataService.shared.ensureID(for: noteB)
+        XCTAssertNotEqual(idA, idB, "Two different notes must get different IDs")
+    }
 }

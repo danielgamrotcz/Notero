@@ -90,4 +90,28 @@ final class SearchServiceTests: XCTestCase {
         XCTAssertFalse(results.isEmpty)
         XCTAssertEqual(results.first?.noteName, "swift")
     }
+
+    func testMultiTermAND() async {
+        let url1 = vaultURL.appendingPathComponent("both.md")
+        let url2 = vaultURL.appendingPathComponent("onlyfirst.md")
+
+        await index.addOrUpdate(url: url1, content: "alpha beta gamma", vaultURL: vaultURL)
+        await index.addOrUpdate(url: url2, content: "alpha only here no second term", vaultURL: vaultURL)
+
+        let results = await index.search(query: "alpha beta")
+        // Only "both.md" should match since both terms are required
+        let names = results.map { $0.noteName }
+        XCTAssertTrue(names.contains("both"))
+        XCTAssertFalse(names.contains("onlyfirst"))
+    }
+
+    func testSnippetContainsMatchContext() async {
+        let url = vaultURL.appendingPathComponent("snippet.md")
+        await index.addOrUpdate(url: url, content: "This document contains the keyword searchable in context", vaultURL: vaultURL)
+
+        let results = await index.search(query: "searchable")
+        XCTAssertFalse(results.isEmpty)
+        XCTAssertTrue(results.first!.snippet.contains("searchable"),
+                      "Snippet should contain the matched term")
+    }
 }

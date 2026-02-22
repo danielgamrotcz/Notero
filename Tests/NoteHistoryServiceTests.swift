@@ -71,4 +71,53 @@ final class NoteHistoryServiceTests: XCTestCase {
         XCTAssertTrue(NoteHistoryService.shared.loadSnapshots(for: noteURL).isEmpty,
                        "History should be empty after deletion")
     }
+
+    // Required tests from test suite spec
+
+    func testSnapshotCreatedOnSave() {
+        NoteHistoryService.shared.saveSnapshot(content: "Snapshot content", for: noteURL)
+        let snapshots = NoteHistoryService.shared.loadSnapshots(for: noteURL)
+        XCTAssertFalse(snapshots.isEmpty, "Saving should create a snapshot file")
+    }
+
+    func testNoDuplicateSnapshot() {
+        NoteHistoryService.shared.saveSnapshot(content: "Identical", for: noteURL)
+        NoteHistoryService.shared.saveSnapshot(content: "Identical", for: noteURL)
+
+        let snapshots = NoteHistoryService.shared.loadSnapshots(for: noteURL)
+        XCTAssertEqual(snapshots.count, 1, "Saving same content twice should create only one snapshot")
+    }
+
+    func testRetentionLimit() {
+        for i in 0..<51 {
+            NoteHistoryService.shared.saveSnapshot(content: "Version \(i)", for: noteURL)
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+
+        let snapshots = NoteHistoryService.shared.loadSnapshots(for: noteURL)
+        XCTAssertLessThanOrEqual(snapshots.count, 50, "Only 50 snapshots should be retained")
+    }
+
+    func testRestoreVersion() {
+        let targetContent = "This is version 2"
+        NoteHistoryService.shared.saveSnapshot(content: "Version 1", for: noteURL)
+        Thread.sleep(forTimeInterval: 1.1)
+        NoteHistoryService.shared.saveSnapshot(content: targetContent, for: noteURL)
+
+        let snapshots = NoteHistoryService.shared.loadSnapshots(for: noteURL)
+        XCTAssertTrue(snapshots.contains(where: { $0.content == targetContent }),
+                      "Should be able to find and restore version content")
+    }
+
+    func testSnapshotsListedChronologically() {
+        NoteHistoryService.shared.saveSnapshot(content: "First", for: noteURL)
+        Thread.sleep(forTimeInterval: 1.1)
+        NoteHistoryService.shared.saveSnapshot(content: "Second", for: noteURL)
+
+        let snapshots = NoteHistoryService.shared.loadSnapshots(for: noteURL)
+        XCTAssertEqual(snapshots.count, 2)
+        // Newest first
+        XCTAssertEqual(snapshots.first?.content, "Second")
+        XCTAssertEqual(snapshots.last?.content, "First")
+    }
 }
