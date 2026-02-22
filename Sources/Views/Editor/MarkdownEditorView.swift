@@ -155,4 +155,71 @@ class MarkdownTextView: NSTextView {
     override var readablePasteboardTypes: [NSPasteboard.PasteboardType] {
         [.string]
     }
+
+    override func insertNewline(_ sender: Any?) {
+        guard let textStorage = textStorage,
+              let currentRange = selectedRanges.first as? NSRange
+        else {
+            super.insertNewline(sender)
+            return
+        }
+
+        let text = textStorage.string as NSString
+        let lineRange = text.lineRange(for: NSRange(location: currentRange.location, length: 0))
+        let currentLine = text.substring(with: lineRange).trimmingCharacters(in: .newlines)
+        let indent = String(currentLine.prefix(while: { $0 == " " || $0 == "\t" }))
+
+        // Task list: "- [ ] " or "- [x] "
+        if currentLine.range(of: "^\\s*- \\[[ xX]\\] ", options: .regularExpression) != nil {
+            let stripped = currentLine.trimmingCharacters(in: .whitespaces)
+            if stripped == "- [ ]" || stripped == "- [x]" || stripped == "- [X]" {
+                textStorage.replaceCharacters(in: lineRange, with: "\n")
+                return
+            }
+            super.insertNewline(sender)
+            insertText("\(indent)- [ ] ", replacementRange: currentInsertionRange())
+            return
+        }
+
+        // Unordered list: "- ", "* "
+        if currentLine.range(of: "^(\\s*)([-*])\\s", options: .regularExpression) != nil {
+            let stripped = currentLine.trimmingCharacters(in: .whitespaces)
+            if stripped == "-" || stripped == "*" {
+                textStorage.replaceCharacters(in: lineRange, with: "\n")
+                return
+            }
+            let marker = stripped.hasPrefix("*") ? "* " : "- "
+            super.insertNewline(sender)
+            insertText("\(indent)\(marker)", replacementRange: currentInsertionRange())
+            return
+        }
+
+        // Ordered list: "1. ", "2. " etc.
+        if currentLine.range(of: "^\\s*\\d+\\.\\s", options: .regularExpression) != nil {
+            let stripped = currentLine.trimmingCharacters(in: .whitespaces)
+            if let numRange = stripped.range(of: "^\\d+", options: .regularExpression) {
+                let num = Int(stripped[numRange]) ?? 1
+                if stripped == "\(num)." {
+                    textStorage.replaceCharacters(in: lineRange, with: "\n")
+                    return
+                }
+                super.insertNewline(sender)
+                insertText("\(indent)\(num + 1). ", replacementRange: currentInsertionRange())
+                return
+            }
+        }
+
+        // Auto-indent: preserve existing indentation (Fix D)
+        if !indent.isEmpty {
+            super.insertNewline(sender)
+            insertText(indent, replacementRange: currentInsertionRange())
+            return
+        }
+
+        super.insertNewline(sender)
+    }
+
+    private func currentInsertionRange() -> NSRange {
+        return selectedRanges.first as? NSRange ?? NSRange(location: 0, length: 0)
+    }
 }
