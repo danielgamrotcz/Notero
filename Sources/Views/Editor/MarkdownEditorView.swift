@@ -170,6 +170,15 @@ class MarkdownTextView: NSTextView {
         [.string]
     }
 
+    override func paste(_ sender: Any?) {
+        let pb = NSPasteboard.general
+        if let string = pb.string(forType: .string) {
+            insertText(string, replacementRange: selectedRange())
+        } else {
+            super.paste(sender)
+        }
+    }
+
     override func insertTab(_ sender: Any?) {
         insertText("    ", replacementRange: selectedRange())
     }
