@@ -7,6 +7,8 @@ struct EditorView: View {
         VStack(spacing: 0) {
             if appState.selectedNoteURL != nil {
                 ZStack {
+                    Color(NSColor.textBackgroundColor)
+
                     if appState.isPreviewMode {
                         MarkdownPreviewView(
                             content: appState.currentContent,

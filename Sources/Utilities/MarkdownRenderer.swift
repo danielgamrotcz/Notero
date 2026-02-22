@@ -286,7 +286,7 @@ enum MarkdownRenderer {
         padding: 20px 40px;
     }
     @media (prefers-color-scheme: dark) {
-        body { background: #1C1C1E; color: #F5F5F7; }
+        body { background: transparent; color: #F5F5F7; }
         a { color: #6CB4EE; }
         blockquote { border-color: #555; color: #aaa; }
         code { background: #2C2C2E; }
@@ -296,7 +296,7 @@ enum MarkdownRenderer {
         hr { border-color: #444; }
     }
     @media (prefers-color-scheme: light) {
-        body { background: #FFFFFF; color: #1D1D1F; }
+        body { background: transparent; color: #1D1D1F; }
         a { color: #0066CC; }
         blockquote { border-color: #ddd; color: #666; }
         code { background: #f4f4f4; }

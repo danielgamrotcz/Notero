@@ -13,6 +13,7 @@ struct MarkdownPreviewView: NSViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
+        webView.underPageBackgroundColor = .clear
         context.coordinator.webView = webView
         webView.navigationDelegate = context.coordinator
         context.coordinator.lastContent = content
