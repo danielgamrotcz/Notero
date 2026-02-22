@@ -106,8 +106,13 @@ struct StatusBarView: View {
         case .saving:
             Text("Saving...")
                 .foregroundColor(.orange)
-        case .saved(let date):
-            Text("Saved \(date.formatted(.dateTime.hour().minute().second()))")
+        case .saved:
+            HStack(spacing: 3) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.system(size: 10))
+                Text("Saved")
+            }
         }
     }
 
