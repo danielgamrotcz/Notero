@@ -116,8 +116,7 @@ struct SidebarView: View {
 
     // MARK: - Favorites Section
 
-    @State private var favoritesExpanded = true
-    @State private var favoritesExpandedFolders: Set<URL> = []
+    @AppStorage("sidebarFavoritesExpanded") private var favoritesExpanded = true
     @State private var draggingFavorite: String?
 
     private var favoritesSection: some View {
@@ -208,12 +207,12 @@ struct SidebarView: View {
     private func favoriteFolderRow(node: FileTreeNode, path: String) -> some View {
         if case .folder(let folderNode) = node {
             let isExpanded = Binding<Bool>(
-                get: { favoritesExpandedFolders.contains(folderNode.url) },
+                get: { appState.favoritesExpandedFolders.contains(folderNode.url) },
                 set: { newValue in
                     if newValue {
-                        favoritesExpandedFolders.insert(folderNode.url)
+                        appState.favoritesExpandedFolders.insert(folderNode.url)
                     } else {
-                        favoritesExpandedFolders.remove(folderNode.url)
+                        appState.favoritesExpandedFolders.remove(folderNode.url)
                     }
                 }
             )
@@ -244,7 +243,7 @@ struct SidebarView: View {
                 if isExpanded.wrappedValue {
                     FileTreeView(
                         nodes: folderNode.children,
-                        expandedFolders: $favoritesExpandedFolders,
+                        expandedFolders: $appState.favoritesExpandedFolders,
                         visibleURLs: visibleFileURLs()
                     )
                     .environmentObject(appState)
@@ -268,7 +267,7 @@ struct SidebarView: View {
 
     // MARK: - Folders Section
 
-    @State private var foldersExpanded = true
+    @AppStorage("sidebarFoldersExpanded") private var foldersExpanded = true
 
     private var foldersSection: some View {
         DisclosureGroup(isExpanded: $foldersExpanded) {
@@ -292,7 +291,7 @@ struct SidebarView: View {
 
     // MARK: - Inbox Section
 
-    @State private var inboxExpanded = true
+    @AppStorage("sidebarInboxExpanded") private var inboxExpanded = true
 
     private var inboxSection: some View {
         DisclosureGroup(isExpanded: $inboxExpanded) {
@@ -316,7 +315,7 @@ struct SidebarView: View {
 
     // MARK: - Sidebar Heatmap
 
-    @State private var heatmapExpanded = true
+    @AppStorage("sidebarHeatmapExpanded") private var heatmapExpanded = true
 
     private var sidebarHeatmap: some View {
         DisclosureGroup(isExpanded: $heatmapExpanded) {
@@ -362,8 +361,8 @@ struct SidebarView: View {
                 if let node = findNode(for: itemURL, in: appState.vaultManager.fileTree),
                    node.isFolder {
                     if case .folder(let folderNode) = node,
-                       favoritesExpandedFolders.contains(folderNode.url) {
-                        collectFileURLs(from: folderNode.children, expandedFolders: favoritesExpandedFolders, into: &urls)
+                       appState.favoritesExpandedFolders.contains(folderNode.url) {
+                        collectFileURLs(from: folderNode.children, expandedFolders: appState.favoritesExpandedFolders, into: &urls)
                     }
                 } else {
                     urls.append(itemURL)

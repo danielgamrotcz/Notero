@@ -76,6 +76,7 @@ struct NoteroApp: App {
                         noteState.selectedNoteURLs.removeAll()
                         noteState.selectedNoteURL = nil
                         noteState.currentContent = ""
+                        noteState.clearLastOpenedNote()
                     }
                 }
                 .keyboardShortcut(.delete, modifiers: .command)
@@ -236,12 +237,6 @@ struct NoteroApp: App {
                     appState.focusSidebarSearch = true
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
-            }
-
-            CommandGroup(replacing: .help) {
-                Button("Check for Updates...") {
-                    updaterController.checkForUpdates(nil)
-                }
             }
 
             // Save

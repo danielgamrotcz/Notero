@@ -47,6 +47,7 @@ final class NoteState: ObservableObject {
             isPreviewMode = UserDefaults.standard.bool(forKey: modeKey)
 
             appState.linkResolver.findBacklinks(for: url)
+            persistLastOpenedNote(url: url)
         }
     }
 
@@ -112,6 +113,7 @@ final class NoteState: ObservableObject {
         isPreviewMode = UserDefaults.standard.bool(forKey: modeKey)
 
         appState.linkResolver.findBacklinks(for: url)
+        persistLastOpenedNote(url: url)
     }
 
     func createNewNote(in folderURL: URL? = nil) {
@@ -140,6 +142,29 @@ final class NoteState: ObservableObject {
         if let url = selectedNoteURL {
             UserDefaults.standard.set(isPreviewMode, forKey: "mode-\(url.lastPathComponent)")
         }
+    }
+
+    // MARK: - Last Opened Note Persistence
+
+    private func persistLastOpenedNote(url: URL) {
+        guard let vaultPath = appState?.vaultManager.vaultURL.path else { return }
+        let relativePath = url.path.replacingOccurrences(of: vaultPath + "/", with: "")
+        UserDefaults.standard.set(relativePath, forKey: "lastOpenedNote")
+    }
+
+    func clearLastOpenedNote() {
+        UserDefaults.standard.removeObject(forKey: "lastOpenedNote")
+    }
+
+    func restoreLastOpenedNote() {
+        guard let appState = appState,
+              let relativePath = UserDefaults.standard.string(forKey: "lastOpenedNote") else { return }
+        let url = appState.vaultManager.vaultURL.appendingPathComponent(relativePath)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            clearLastOpenedNote()
+            return
+        }
+        openNote(url: url)
     }
 
     // MARK: - AI

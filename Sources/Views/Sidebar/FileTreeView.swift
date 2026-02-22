@@ -114,6 +114,7 @@ struct FileTreeView: View {
                 noteState.selectedNoteURLs.removeAll()
                 noteState.selectedNoteURL = nil
                 noteState.currentContent = ""
+                noteState.clearLastOpenedNote()
             }
         } else {
             let relativePath = appState.favoritesManager.relativePath(
@@ -144,6 +145,7 @@ struct FileTreeView: View {
                 if noteState.selectedNoteURL == fileNode.url {
                     noteState.selectedNoteURL = nil
                     noteState.currentContent = ""
+                    noteState.clearLastOpenedNote()
                 }
             }
             Divider()

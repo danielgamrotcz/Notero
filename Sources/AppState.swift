@@ -30,6 +30,7 @@ final class AppState: ObservableObject {
     @Published var renamingIsNew: Bool = false
     @Published var focusedFolderURL: URL?
     @Published var expandedFolders: Set<URL> = []
+    @Published var favoritesExpandedFolders: Set<URL> = []
     @Published var focusSidebarSearch = false
 
     // Settings
@@ -92,6 +93,15 @@ final class AppState: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
 
+        // Restore persisted expanded folders
+        let vaultURL = vault.vaultURL
+        if let paths = defaults.stringArray(forKey: "expandedFolderPaths") {
+            self.expandedFolders = Set(paths.map { vaultURL.appendingPathComponent($0) })
+        }
+        if let paths = defaults.stringArray(forKey: "favoritesExpandedFolderPaths") {
+            self.favoritesExpandedFolders = Set(paths.map { vaultURL.appendingPathComponent($0) })
+        }
+
         setupSettingsSync()
         syncVaultPathToAppGroup()
 
@@ -152,6 +162,18 @@ final class AppState: ObservableObject {
                 self?.vaultManager.loadFileTree(sortOrder: order)
             }
             .store(in: &cancellables)
+
+        $expandedFolders.dropFirst().sink { [weak self] folders in
+            guard let vaultPath = self?.vaultManager.vaultURL.path else { return }
+            let paths = folders.map { $0.path.replacingOccurrences(of: vaultPath + "/", with: "") }
+            UserDefaults.standard.set(paths, forKey: "expandedFolderPaths")
+        }.store(in: &cancellables)
+
+        $favoritesExpandedFolders.dropFirst().sink { [weak self] folders in
+            guard let vaultPath = self?.vaultManager.vaultURL.path else { return }
+            let paths = folders.map { $0.path.replacingOccurrences(of: vaultPath + "/", with: "") }
+            UserDefaults.standard.set(paths, forKey: "favoritesExpandedFolderPaths")
+        }.store(in: &cancellables)
     }
 
     // MARK: - Folder Operations

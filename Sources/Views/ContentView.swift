@@ -1,16 +1,5 @@
 import SwiftUI
 
-struct WindowConfigurator: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            view.window?.tabbingMode = .preferred
-        }
-        return view
-    }
-    func updateNSView(_ nsView: NSView, context: Context) {}
-}
-
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var noteState = NoteState()
@@ -46,11 +35,12 @@ struct ContentView: View {
                 .environmentObject(appState)
                 .environmentObject(noteState)
         }
-        .background(WindowConfigurator())
         .focusedObject(noteState)
         .navigationTitle(windowTitle)
         .onAppear {
             noteState.configure(appState: appState)
+            noteState.restoreLastOpenedNote()
+            NSApp.windows.first?.tabbingMode = .disallowed
         }
     }
 
