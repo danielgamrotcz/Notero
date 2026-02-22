@@ -31,6 +31,8 @@ final class AppState: ObservableObject {
     @Published var fontSize: CGFloat = 14
     @Published var aiStatus: String = ""
     @Published var isAIWorking: Bool = false
+    @Published var renamingItemURL: URL?
+    @Published var renamingIsNew: Bool = false
 
     // Settings
     @Published var defaultNoteName: String
@@ -82,6 +84,12 @@ final class AppState: ObservableObject {
 
         // Forward VaultManager changes into AppState so SwiftUI redraws immediately
         vault.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+
+        // Forward FavoritesManager changes so favorites toggle updates UI immediately
+        favoritesManager.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
@@ -162,6 +170,35 @@ final class AppState: ObservableObject {
                 await searchService.reindex(url: url)
             }
         }
+    }
+
+    func createNewFolder(in folderURL: URL? = nil) {
+        let parent = folderURL ?? vaultManager.vaultURL
+        var name = "New Folder"
+        var counter = 1
+        while FileManager.default.fileExists(atPath: parent.appendingPathComponent(name).path) {
+            counter += 1
+            name = "New Folder \(counter)"
+        }
+        if let url = vaultManager.createFolder(named: name, in: folderURL) {
+            renamingIsNew = true
+            renamingItemURL = url
+        }
+    }
+
+    func commitRename(url: URL, newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            renamingItemURL = nil
+            return
+        }
+        if let newURL = vaultManager.renameItem(at: url, to: trimmed) {
+            if selectedNoteURL == url {
+                selectedNoteURL = newURL
+            }
+        }
+        renamingIsNew = false
+        renamingItemURL = nil
     }
 
     func saveCurrentNote() {

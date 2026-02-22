@@ -80,7 +80,7 @@ struct SidebarView: View {
             .contextMenu {
                 Button("New Note") { appState.createNewNote() }
                 Button("New Folder") {
-                    _ = appState.vaultManager.createFolder(named: "New Folder")
+                    appState.createNewFolder()
                 }
             }
             // Activity heatmap widget

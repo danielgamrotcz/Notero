@@ -13,24 +13,42 @@ struct FileTreeView: View {
                         .environmentObject(appState)
                         .padding(.leading, 4)
                 } label: {
-                    FileTreeRowView(node: node, isSelected: false)
+                    if appState.renamingItemURL == folderNode.url {
+                        InlineRenameField(
+                            url: folderNode.url,
+                            initialName: folderNode.name,
+                            isFolder: true
+                        )
+                        .environmentObject(appState)
+                    } else {
+                        FileTreeRowView(node: node, isSelected: false)
+                    }
                 }
                 .contextMenu { folderContextMenu(folder: folderNode) }
 
             case .file(let fileNode):
                 let selected = appState.selectedNoteURL == fileNode.url
-                FileTreeRowView(
-                    node: node,
-                    isSelected: selected
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(selected ? Color.accentColor : Color.clear)
-                )
-                .onTapGesture { appState.openNote(url: fileNode.url) }
-                .contextMenu { fileContextMenu(fileNode: fileNode) }
-                .draggable(fileNode.url.absoluteString)
-                .help("Created \(fileNode.createdDate.formatted(.dateTime.month(.abbreviated).day().year()))\nModified \(relativeTime(fileNode.modificationDate))")
+                if appState.renamingItemURL == fileNode.url {
+                    InlineRenameField(
+                        url: fileNode.url,
+                        initialName: fileNode.name,
+                        isFolder: false
+                    )
+                    .environmentObject(appState)
+                } else {
+                    FileTreeRowView(
+                        node: node,
+                        isSelected: selected
+                    )
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(selected ? Color.accentColor : Color.clear)
+                    )
+                    .onTapGesture { appState.openNote(url: fileNode.url) }
+                    .contextMenu { fileContextMenu(fileNode: fileNode) }
+                    .draggable(fileNode.url.absoluteString)
+                    .help("Created \(fileNode.createdDate.formatted(.dateTime.month(.abbreviated).day().year()))\nModified \(relativeTime(fileNode.modificationDate))")
+                }
             }
         }
     }
@@ -54,7 +72,7 @@ struct FileTreeView: View {
         Divider()
 
         Button("Rename") {
-            // Inline rename handled by sidebar
+            appState.renamingItemURL = fileNode.url
         }
         Button("Duplicate") {
             _ = appState.vaultManager.duplicateNote(at: fileNode.url)
@@ -94,10 +112,12 @@ struct FileTreeView: View {
             appState.createNewNote(in: folder.url)
         }
         Button("New Folder") {
-            _ = appState.vaultManager.createFolder(named: "New Folder", in: folder.url)
+            appState.createNewFolder(in: folder.url)
         }
         Divider()
-        Button("Rename") { }
+        Button("Rename") {
+            appState.renamingItemURL = folder.url
+        }
         Button("Move to Trash") {
             appState.vaultManager.moveToTrash(url: folder.url)
         }
@@ -105,5 +125,52 @@ struct FileTreeView: View {
         Button("Reveal in Finder") {
             appState.vaultManager.revealInFinder(url: folder.url)
         }
+    }
+}
+
+// MARK: - Inline Rename Field
+
+struct InlineRenameField: View {
+    @EnvironmentObject var appState: AppState
+    let url: URL
+    let initialName: String
+    let isFolder: Bool
+
+    @State private var text: String = ""
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: isFolder ? "folder.fill" : "doc.text.fill")
+                .foregroundColor(isFolder ? .accentColor : .secondary.opacity(0.6))
+                .font(.system(size: 13))
+                .frame(width: 16, alignment: .center)
+            TextField("", text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13, weight: isFolder ? .medium : .regular))
+                .focused($isFocused)
+                .onSubmit { commitRename() }
+                .onExitCommand { appState.renamingItemURL = nil }
+        }
+        .padding(.vertical, 2)
+        .padding(.horizontal, 4)
+        .onAppear {
+            text = appState.renamingIsNew ? "" : initialName
+            isFocused = true
+        }
+        .onChange(of: isFocused) { _, focused in
+            if !focused {
+                commitRename()
+            }
+        }
+    }
+
+    private func commitRename() {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != initialName else {
+            appState.renamingItemURL = nil
+            return
+        }
+        appState.commitRename(url: url, newName: trimmed)
     }
 }
