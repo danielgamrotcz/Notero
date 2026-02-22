@@ -315,28 +315,16 @@ struct NoteroApp: App {
         }
 
         var html = MarkdownRenderer.renderHTML(from: content)
-        // Inject PDF CSS and title
         html = html.replacingOccurrences(of: "</style>", with: "\(pdfCSS)</style>")
         html = html.replacingOccurrences(of: "<body>", with: "<body>\(titleHTML)")
         html = html.replacingOccurrences(of: "</body>", with: "<div class='pdf-footer'>\(noteName) · Exported \(dateString)</div></body>")
 
-        // Use WKWebView to create PDF
         let config = WKWebViewConfiguration()
         let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 595, height: 842), configuration: config)
+        let exporter = PDFExporter(saveURL: saveURL)
+        webView.navigationDelegate = exporter
+        objc_setAssociatedObject(webView, "pdfExporter", exporter, .OBJC_ASSOCIATION_RETAIN)
         webView.loadHTMLString(html, baseURL: nil)
-
-        // Wait for load then generate PDF
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            webView.createPDF { result in
-                switch result {
-                case .success(let data):
-                    try? data.write(to: saveURL)
-                    NSWorkspace.shared.open(saveURL)
-                case .failure(let error):
-                    Log.general.error("PDF export failed: \(error.localizedDescription)")
-                }
-            }
-        }
     }
 
     private func exportAsDOCX() {
@@ -359,8 +347,8 @@ struct NoteroApp: App {
             try? appState.currentContent.write(to: tempMD, atomically: true, encoding: .utf8)
 
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["pandoc", tempMD.path, "-o", saveURL.path]
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-l", "-c", "pandoc \"\(tempMD.path)\" -o \"\(saveURL.path)\""]
             try? process.run()
             process.waitUntilExit()
             try? FileManager.default.removeItem(at: tempMD)
@@ -417,12 +405,16 @@ struct NoteroApp: App {
         </html>
         """
 
-        try? fullHTML.write(to: saveURL, atomically: true, encoding: .utf8)
-
-        // Copy file URL and open
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(saveURL.absoluteString, forType: .string)
-        NSWorkspace.shared.open(saveURL)
+        do {
+            try fullHTML.write(to: saveURL, atomically: true, encoding: .utf8)
+            NSWorkspace.shared.open(saveURL)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "HTML Export Failed"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
     }
 
     private func openGraphView() {
@@ -551,5 +543,35 @@ struct NoteroApp: App {
         alert.informativeText = "Could not find a note matching '\(identifier)'."
         alert.alertStyle = .warning
         alert.runModal()
+    }
+}
+
+// MARK: - PDF Exporter
+
+private class PDFExporter: NSObject, WKNavigationDelegate {
+    let saveURL: URL
+
+    init(saveURL: URL) {
+        self.saveURL = saveURL
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        let config = WKPDFConfiguration()
+        webView.createPDF(configuration: config) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let data):
+                do {
+                    try data.write(to: self.saveURL)
+                    DispatchQueue.main.async {
+                        NSWorkspace.shared.open(self.saveURL)
+                    }
+                } catch {
+                    Log.general.error("PDF write failed: \(error.localizedDescription)")
+                }
+            case .failure(let error):
+                Log.general.error("PDF export failed: \(error.localizedDescription)")
+            }
+        }
     }
 }
