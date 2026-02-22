@@ -13,7 +13,10 @@ struct StatusBarView: View {
                     Text("Created \(created.formatted(.dateTime.month(.abbreviated).day().year()))")
                 }
 
-                if let modified = appState.currentNoteModified {
+                if appState.isEditing {
+                    Text("Editing...")
+                        .foregroundColor(.secondary)
+                } else if let modified = appState.currentNoteModified {
                     Text("Modified \(relativeTime(modified))")
                 }
 

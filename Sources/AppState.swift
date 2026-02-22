@@ -100,6 +100,8 @@ final class AppState: ObservableObject {
         syncVaultPathToAppGroup()
 
         autoSaveService.onDidSave = { [weak self] content, url in
+            self?.isEditing = false
+            self?.currentNoteModified = Date()
             self?.autoTitleRenameIfNeeded(content: content, url: url)
         }
 
