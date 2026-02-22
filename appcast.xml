@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+    <channel>
+        <title>Notero</title>
+        <link>https://github.com/danielgamrotcz/Notero</link>
+        <description>Notero release notes</description>
+        <language>en</language>
+        <item>
+            <title>1.0.0</title>
+            <pubDate>Sun, 22 Feb 2026 08:02:38 +0000</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/danielgamrotcz/Notero/releases/download/v1.0.0/Notero-1.0.0.zip" sparkle:edSignature="jJpOcKSWaJn3wr6zRbo8xZjpr5eUZfOpbPG7O+N3ZGpQaSU47gZV5p+O7eUR1zDG2A6rksuxwJpKbWhxDfTwBA==" length="3753233" type="application/octet-stream"/>
+        </item>
+    </channel>
+</rss>
