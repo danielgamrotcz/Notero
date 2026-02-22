@@ -23,8 +23,8 @@ struct MarkdownEditorView: NSViewRepresentable {
         textView.isSelectable = true
         textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
         textView.textColor = NSColor.labelColor
-        textView.backgroundColor = .clear
-        textView.drawsBackground = false
+        textView.backgroundColor = NSColor.textBackgroundColor
+        textView.drawsBackground = true
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
@@ -95,18 +95,21 @@ struct MarkdownEditorView: NSViewRepresentable {
             let savedSelection = noteURL.flatMap { coordinator.cursorPositions[$0] }
             let selection = savedSelection ?? [NSValue(range: NSRange(location: 0, length: 0))]
             textView.selectedRanges = selection
+            // Ensure layout is computed synchronously so frame sizes are current
+            if let layoutManager = textView.layoutManager,
+               let textContainer = textView.textContainer {
+                layoutManager.ensureLayout(for: textContainer)
+            }
             DispatchQueue.main.async {
-                // Ensure layout is complete before scrolling
-                if let layoutManager = textView.layoutManager,
-                   let textContainer = textView.textContainer {
-                    layoutManager.ensureLayout(for: textContainer)
+                scrollView.documentView?.layoutSubtreeIfNeeded()
+                if let targetY = savedY {
+                    let docHeight = scrollView.documentView?.frame.height ?? 0
+                    let maxY = max(0, docHeight - scrollView.contentSize.height)
+                    let point = NSPoint(x: 0, y: min(targetY, maxY))
+                    scrollView.contentView.scroll(to: point)
+                } else {
+                    scrollView.contentView.scroll(to: .zero)
                 }
-                // Clamp scroll position so short notes always start at the top
-                let docHeight = scrollView.documentView?.frame.height ?? 0
-                let maxY = max(0, docHeight - scrollView.contentSize.height)
-                let targetY = min(savedY ?? 0, maxY)
-                let point = NSPoint(x: 0, y: targetY)
-                scrollView.contentView.scroll(to: point)
                 scrollView.reflectScrolledClipView(scrollView.contentView)
             }
 
@@ -225,13 +228,6 @@ struct MarkdownEditorView: NSViewRepresentable {
 }
 
 class MarkdownTextView: NSTextView {
-    override func draw(_ dirtyRect: NSRect) {
-        // Clear background to prevent ghost text when switching to a shorter note
-        NSColor.textBackgroundColor.setFill()
-        dirtyRect.fill()
-        super.draw(dirtyRect)
-    }
-
     override var readablePasteboardTypes: [NSPasteboard.PasteboardType] {
         [.string]
     }
