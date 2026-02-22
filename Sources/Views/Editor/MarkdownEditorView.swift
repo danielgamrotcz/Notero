@@ -80,19 +80,21 @@ struct MarkdownEditorView: NSViewRepresentable {
         let coordinator = context.coordinator
 
         if textView.string != text {
-            // Save scroll position for the old note
+            // Save scroll and cursor position for the old note
             if let oldURL = coordinator.currentURL {
                 coordinator.scrollPositions[oldURL] = coordinator.lastKnownScrollY
+                coordinator.cursorPositions[oldURL] = textView.selectedRanges
             }
 
-            let selectedRanges = textView.selectedRanges
             textView.string = text
-            textView.selectedRanges = selectedRanges
             coordinator.applyFullHighlighting()
 
-            // Restore scroll position for the new note
+            // Restore scroll and cursor position for the new note
             coordinator.currentURL = noteURL
             let savedY = noteURL.flatMap { coordinator.scrollPositions[$0] }
+            let savedSelection = noteURL.flatMap { coordinator.cursorPositions[$0] }
+            let selection = savedSelection ?? [NSValue(range: NSRange(location: 0, length: 0))]
+            textView.selectedRanges = selection
             DispatchQueue.main.async {
                 let point = NSPoint(x: 0, y: savedY ?? 0)
                 scrollView.contentView.scroll(to: point)
@@ -140,6 +142,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         weak var textView: MarkdownTextView?
         private var highlighter: MarkdownHighlighter
         var scrollPositions: [URL: CGFloat] = [:]
+        var cursorPositions: [URL: [NSValue]] = [:]
         var currentURL: URL?
         var lastKnownScrollY: CGFloat = 0
 
