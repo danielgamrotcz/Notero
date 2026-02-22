@@ -170,6 +170,10 @@ class MarkdownTextView: NSTextView {
         [.string]
     }
 
+    override func insertTab(_ sender: Any?) {
+        insertText("    ", replacementRange: selectedRange())
+    }
+
     override func insertNewline(_ sender: Any?) {
         guard let textStorage = textStorage,
               let currentRange = selectedRanges.first as? NSRange
