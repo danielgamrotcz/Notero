@@ -174,6 +174,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         var parent: MarkdownEditorView
         weak var textView: MarkdownTextView?
         private var highlighter: MarkdownHighlighter
+        private var isHighlighting = false
         var scrollPositions: [URL: CGFloat] = [:]
         var cursorPositions: [URL: [NSValue]] = [:]
         var currentURL: URL?
@@ -195,6 +196,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         }
 
         @objc func handleScrollChange(_ notification: Notification) {
+            guard !isHighlighting else { return }
             guard let clipView = notification.object as? NSClipView,
                   let docView = clipView.documentView else { return }
             lastKnownScrollY = clipView.bounds.origin.y
@@ -281,9 +283,11 @@ struct MarkdownEditorView: NSViewRepresentable {
             guard !textView.string.isEmpty else { return }
 
             let selectedRanges = textView.selectedRanges
+            isHighlighting = true
             storage.beginEditing()
             highlighter.highlightFull(storage: storage)
             storage.endEditing()
+            isHighlighting = false
             textView.selectedRanges = selectedRanges
         }
 
@@ -294,11 +298,13 @@ struct MarkdownEditorView: NSViewRepresentable {
 
             let selectedRanges = textView.selectedRanges
             let fullString = textView.string as NSString
-            let fullRange = NSRange(location: 0, length: fullString.length)
+            let editedRange = textView.selectedRange()
 
+            isHighlighting = true
             storage.beginEditing()
-            highlighter.highlight(storage: storage, in: fullRange, fullString: fullString)
+            highlighter.highlight(storage: storage, in: editedRange, fullString: fullString)
             storage.endEditing()
+            isHighlighting = false
             textView.selectedRanges = selectedRanges
         }
     }
