@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import WebKit
 
 @MainActor
 final class NoteState: ObservableObject {
@@ -318,6 +319,156 @@ final class NoteState: ObservableObject {
         }
     }
 
+    // MARK: - Export
+
+    func exportAsPDF() {
+        guard let selectedURL = selectedNoteURL else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.pdf]
+        let defaultName = selectedURL.deletingPathExtension().lastPathComponent
+        panel.nameFieldStringValue = defaultName
+        panel.directoryURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+
+        guard panel.runModal() == .OK, let saveURL = panel.url else { return }
+
+        let noteName = selectedURL.deletingPathExtension().lastPathComponent
+        let dateString = Date().formatted(.dateTime.month(.abbreviated).day().year())
+
+        let pdfCSS = """
+        body { background: white !important; color: black !important; max-width: none !important; }
+        @page { margin: 2.5cm; size: A4; }
+        .pdf-footer { position: fixed; bottom: 0; left: 0; right: 0;
+            text-align: center; font-size: 10px; color: #999; padding: 10px; }
+        """
+
+        let firstLine = currentContent.components(separatedBy: .newlines).first?.trimmingCharacters(in: .whitespaces) ?? ""
+        var titleHTML = ""
+        if !firstLine.hasPrefix("# ") {
+            titleHTML = "<h1>\(noteName)</h1>"
+        }
+
+        var html = MarkdownRenderer.renderHTML(from: currentContent)
+        html = html.replacingOccurrences(of: "</style>", with: "\(pdfCSS)</style>")
+        html = html.replacingOccurrences(of: "<body>", with: "<body>\(titleHTML)")
+        html = html.replacingOccurrences(of: "</body>", with: "<div class='pdf-footer'>\(noteName) · Exported \(dateString)</div></body>")
+
+        let config = WKWebViewConfiguration()
+        let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 595, height: 842), configuration: config)
+        let exporter = PDFExporter(saveURL: saveURL)
+        webView.navigationDelegate = exporter
+        objc_setAssociatedObject(webView, "pdfExporter", exporter, .OBJC_ASSOCIATION_RETAIN)
+        webView.loadHTMLString(html, baseURL: nil)
+    }
+
+    func exportAsDOCX() {
+        guard let selectedURL = selectedNoteURL else { return }
+        let noteName = selectedURL.deletingPathExtension().lastPathComponent
+
+        let pandocAvailable = FileManager.default.fileExists(atPath: "/opt/homebrew/bin/pandoc")
+            || FileManager.default.fileExists(atPath: "/usr/local/bin/pandoc")
+
+        if pandocAvailable {
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.init(filenameExtension: "docx")!]
+            panel.nameFieldStringValue = noteName
+            guard panel.runModal() == .OK, let saveURL = panel.url else { return }
+
+            let tempDir = FileManager.default.temporaryDirectory
+            let tempMD = tempDir.appendingPathComponent("\(UUID().uuidString).md")
+            try? currentContent.write(to: tempMD, atomically: true, encoding: .utf8)
+
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-l", "-c", "pandoc \"\(tempMD.path)\" -o \"\(saveURL.path)\""]
+            try? process.run()
+            process.waitUntilExit()
+            try? FileManager.default.removeItem(at: tempMD)
+
+            if process.terminationStatus == 0 {
+                NSWorkspace.shared.open(saveURL)
+            }
+        } else {
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.rtf]
+            panel.nameFieldStringValue = noteName
+            guard panel.runModal() == .OK, let saveURL = panel.url else { return }
+
+            let attrString = NSAttributedString(string: currentContent, attributes: [
+                .font: NSFont.systemFont(ofSize: 14),
+                .foregroundColor: NSColor.textColor
+            ])
+            if let rtfData = attrString.rtf(from: NSRange(location: 0, length: attrString.length)) {
+                try? rtfData.write(to: saveURL)
+                NSWorkspace.shared.open(saveURL)
+            }
+        }
+    }
+
+    func exportAsHTML() {
+        guard let selectedURL = selectedNoteURL else { return }
+        let noteName = selectedURL.deletingPathExtension().lastPathComponent
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.html]
+        panel.nameFieldStringValue = noteName
+        guard panel.runModal() == .OK, let saveURL = panel.url else { return }
+
+        let htmlContent = MarkdownRenderer.renderHTML(from: currentContent)
+        let description = String(currentContent.prefix(160)).replacingOccurrences(of: "\n", with: " ")
+
+        let fullHTML = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="\(description)">
+        <title>\(noteName)</title>
+        <style>
+        \(MarkdownRenderer.defaultCSS)
+        </style>
+        </head>
+        <body>
+        \(htmlContent)
+        </body>
+        </html>
+        """
+
+        do {
+            try fullHTML.write(to: saveURL, atomically: true, encoding: .utf8)
+            NSWorkspace.shared.open(saveURL)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "HTML Export Failed"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
+    }
+
+    func exportAsMarkdown() {
+        guard let selectedURL = selectedNoteURL else { return }
+        let noteName = selectedURL.deletingPathExtension().lastPathComponent
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = "\(noteName).md"
+        panel.directoryURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+
+        guard panel.runModal() == .OK, let saveURL = panel.url else { return }
+
+        do {
+            try currentContent.write(to: saveURL, atomically: true, encoding: .utf8)
+            NSWorkspace.shared.open(saveURL)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Markdown Export Failed"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
+    }
+
     // MARK: - Auto-Save Callback
 
     func handleAutoSaveCompletion(content: String, url: URL) {
@@ -328,6 +479,35 @@ final class NoteState: ObservableObject {
     }
 
     // MARK: - Auto Title
+
+    // swiftlint:disable:next nesting
+    private class PDFExporter: NSObject, WKNavigationDelegate {
+        let saveURL: URL
+
+        init(saveURL: URL) {
+            self.saveURL = saveURL
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            let config = WKPDFConfiguration()
+            webView.createPDF(configuration: config) { [weak self] result in
+                guard let self = self else { return }
+                switch result {
+                case .success(let data):
+                    do {
+                        try data.write(to: self.saveURL)
+                        DispatchQueue.main.async {
+                            NSWorkspace.shared.open(self.saveURL)
+                        }
+                    } catch {
+                        Log.general.error("PDF write failed: \(error.localizedDescription)")
+                    }
+                case .failure(let error):
+                    Log.general.error("PDF export failed: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
 
     private func autoTitleRenameIfNeeded(content: String, url: URL) {
         guard let appState = appState, appState.autoTitleFromH1 else { return }

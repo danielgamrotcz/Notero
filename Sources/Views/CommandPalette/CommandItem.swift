@@ -42,12 +42,13 @@ struct CommandItem: Identifiable {
                 noteState.improveWithOllama()
             },
             CommandItem(name: "Export Note as PDF", icon: "arrow.down.doc", shortcut: nil) {
-                // PDF export handled in menu
+                noteState.exportAsPDF()
             },
-            CommandItem(name: "Copy Note as HTML", icon: "doc.richtext", shortcut: nil) {
-                let html = MarkdownRenderer.renderHTML(from: noteState.currentContent)
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(html, forType: .string)
+            CommandItem(name: "Export Note as HTML", icon: "globe", shortcut: nil) {
+                noteState.exportAsHTML()
+            },
+            CommandItem(name: "Export Note as Markdown", icon: "doc.text", shortcut: nil) {
+                noteState.exportAsMarkdown()
             },
         ]
     }
