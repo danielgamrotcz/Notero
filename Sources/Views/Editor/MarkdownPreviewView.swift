@@ -5,11 +5,14 @@ struct MarkdownPreviewView: NSViewRepresentable {
     let content: String
     var onCheckboxToggle: ((Int) -> Void)?
     var onWikilinkClick: ((String) -> Void)?
+    var initialScrollFraction: CGFloat = 0
+    var scrollFractionWriter: ((CGFloat) -> Void)?
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "checkboxToggle")
         config.userContentController.add(context.coordinator, name: "wikilinkClick")
+        config.userContentController.add(context.coordinator, name: "scrollFraction")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
@@ -83,6 +86,11 @@ struct MarkdownPreviewView: NSViewRepresentable {
         // Called when initial page finishes loading
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             pageLoaded = true
+            let fraction = parent.initialScrollFraction
+            if fraction > 0 {
+                let js = "window.scrollTo(0, \(fraction) * (document.documentElement.scrollHeight - window.innerHeight));"
+                webView.evaluateJavaScript(js, completionHandler: nil)
+            }
         }
 
         func webView(_ webView: WKWebView,
@@ -106,6 +114,8 @@ struct MarkdownPreviewView: NSViewRepresentable {
                 parent.onCheckboxToggle?(index)
             } else if message.name == "wikilinkClick", let linkName = message.body as? String {
                 parent.onWikilinkClick?(linkName)
+            } else if message.name == "scrollFraction", let fraction = message.body as? Double {
+                parent.scrollFractionWriter?(CGFloat(fraction))
             }
         }
     }

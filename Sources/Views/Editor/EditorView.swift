@@ -20,7 +20,9 @@ struct EditorView: View {
                                 if let url = appState.linkResolver.resolve(linkName: linkName) {
                                     noteState.openNote(url: url)
                                 }
-                            }
+                            },
+                            initialScrollFraction: noteState.scrollFraction,
+                            scrollFractionWriter: { noteState.scrollFraction = $0 }
                         )
                         .transition(.opacity)
                     } else {
@@ -35,7 +37,9 @@ struct EditorView: View {
                                 noteState.isEditing = true
                                 appState.autoSaveService.scheduleSave(content: newText, to: url)
                             },
-                            pendingSearchHighlight: $noteState.pendingSearchHighlight
+                            pendingSearchHighlight: $noteState.pendingSearchHighlight,
+                            initialScrollFraction: noteState.scrollFraction,
+                            scrollFractionWriter: { noteState.scrollFraction = $0 }
                         )
                         .transition(.opacity)
                     }
@@ -66,6 +70,21 @@ struct EditorView: View {
                 EmptyStateView()
                     .environmentObject(appState)
                     .environmentObject(noteState)
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                Button(action: { noteState.navigateBack() }) {
+                    Image(systemName: "chevron.left")
+                }
+                .disabled(!noteState.canGoBack)
+                .help("Back (⌘[)")
+
+                Button(action: { noteState.navigateForward() }) {
+                    Image(systemName: "chevron.right")
+                }
+                .disabled(!noteState.canGoForward)
+                .help("Forward (⌘])")
             }
         }
     }

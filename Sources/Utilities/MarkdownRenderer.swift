@@ -70,6 +70,12 @@ enum MarkdownRenderer {
         }
         attachListeners();
         hljs.highlightAll();
+        window.addEventListener('scroll', function() {
+            var maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (maxScroll > 0) {
+                window.webkit.messageHandlers.scrollFraction.postMessage(window.scrollY / maxScroll);
+            }
+        });
         </script>
         </body>
         </html>

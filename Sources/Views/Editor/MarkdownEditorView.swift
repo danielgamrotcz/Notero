@@ -9,6 +9,8 @@ struct MarkdownEditorView: NSViewRepresentable {
     let noteURL: URL?
     var onTextChange: ((String) -> Void)?
     var pendingSearchHighlight: Binding<String?>?
+    var initialScrollFraction: CGFloat = 0
+    var scrollFractionWriter: ((CGFloat) -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -71,6 +73,21 @@ struct MarkdownEditorView: NSViewRepresentable {
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
+
+        // Restore scroll fraction from preview mode
+        let fraction = initialScrollFraction
+        if fraction > 0 {
+            DispatchQueue.main.async {
+                scrollView.documentView?.layoutSubtreeIfNeeded()
+                let docHeight = scrollView.documentView?.frame.height ?? 0
+                let maxScroll = max(0, docHeight - scrollView.contentSize.height)
+                if maxScroll > 0 {
+                    let point = NSPoint(x: 0, y: fraction * maxScroll)
+                    scrollView.contentView.scroll(to: point)
+                    scrollView.reflectScrolledClipView(scrollView.contentView)
+                }
+            }
+        }
 
         return scrollView
     }
@@ -171,11 +188,20 @@ struct MarkdownEditorView: NSViewRepresentable {
                 self, selector: #selector(handleAIImprovement(_:)),
                 name: .aiTextImproved, object: nil
             )
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(handleInsertMarkdownFormat(_:)),
+                name: .insertMarkdownFormat, object: nil
+            )
         }
 
         @objc func handleScrollChange(_ notification: Notification) {
-            guard let clipView = notification.object as? NSClipView else { return }
+            guard let clipView = notification.object as? NSClipView,
+                  let docView = clipView.documentView else { return }
             lastKnownScrollY = clipView.bounds.origin.y
+            let maxScroll = docView.frame.height - clipView.bounds.height
+            if maxScroll > 0 {
+                parent.scrollFractionWriter?(clipView.bounds.origin.y / maxScroll)
+            }
         }
 
         @objc private func handleAIImprovement(_ notification: Notification) {
@@ -187,6 +213,53 @@ struct MarkdownEditorView: NSViewRepresentable {
             if textView.shouldChangeText(in: fullRange, replacementString: improved) {
                 storage.replaceCharacters(in: fullRange, with: improved)
                 textView.didChangeText()
+            }
+        }
+
+        @objc private func handleInsertMarkdownFormat(_ notification: Notification) {
+            guard let info = notification.userInfo,
+                  let type = info["type"] as? String else { return }
+            switch type {
+            case "wrap":
+                guard let prefix = info["prefix"] as? String,
+                      let suffix = info["suffix"] as? String,
+                      let cursorOffset = info["cursorOffset"] as? Int else { return }
+                handleWrapFormat(prefix: prefix, suffix: suffix, cursorOffset: cursorOffset)
+            case "linePrefix":
+                guard let prefix = info["prefix"] as? String else { return }
+                handleLinePrefixFormat(prefix: prefix)
+            default:
+                break
+            }
+        }
+
+        private func handleWrapFormat(prefix: String, suffix: String, cursorOffset: Int) {
+            guard let textView = textView,
+                  let storage = textView.textStorage else { return }
+            let selectedRange = textView.selectedRange()
+            let selectedText = (storage.string as NSString).substring(with: selectedRange)
+            let replacement = prefix + selectedText + suffix
+            textView.breakUndoCoalescing()
+            if textView.shouldChangeText(in: selectedRange, replacementString: replacement) {
+                storage.replaceCharacters(in: selectedRange, with: replacement)
+                textView.didChangeText()
+                let cursorPos = selectedRange.location + replacement.utf16.count - cursorOffset
+                textView.setSelectedRange(NSRange(location: cursorPos, length: 0))
+            }
+        }
+
+        private func handleLinePrefixFormat(prefix: String) {
+            guard let textView = textView,
+                  let storage = textView.textStorage else { return }
+            let selectedRange = textView.selectedRange()
+            let lineRange = (storage.string as NSString).lineRange(for: NSRange(location: selectedRange.location, length: 0))
+            let insertRange = NSRange(location: lineRange.location, length: 0)
+            textView.breakUndoCoalescing()
+            if textView.shouldChangeText(in: insertRange, replacementString: prefix) {
+                storage.replaceCharacters(in: insertRange, with: prefix)
+                textView.didChangeText()
+                let newCursorPos = selectedRange.location + prefix.utf16.count
+                textView.setSelectedRange(NSRange(location: newCursorPos, length: selectedRange.length))
             }
         }
 

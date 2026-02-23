@@ -15,6 +15,19 @@ final class NoteState: ObservableObject {
     @Published var aiStatus: String = ""
     @Published var isAIWorking: Bool = false
 
+    /// Proportional scroll position (0.0–1.0) shared between editor and preview.
+    /// Not @Published to avoid triggering SwiftUI re-renders on every scroll event.
+    var scrollFraction: CGFloat = 0
+
+    // MARK: - Navigation History
+    @Published private(set) var canGoBack: Bool = false
+    @Published private(set) var canGoForward: Bool = false
+
+    private var navigationHistory: [URL] = []
+    private var navigationIndex: Int = -1
+    private let maxHistorySize = 20
+    private var isNavigatingHistory = false
+
     private(set) weak var appState: AppState?
 
     func configure(appState: AppState) {
@@ -46,8 +59,10 @@ final class NoteState: ObservableObject {
             let modeKey = "mode-\(url.lastPathComponent)"
             isPreviewMode = UserDefaults.standard.bool(forKey: modeKey)
 
+            scrollFraction = 0
             appState.linkResolver.findBacklinks(for: url)
             persistLastOpenedNote(url: url)
+            pushToHistory(url: url)
         }
     }
 
@@ -109,6 +124,8 @@ final class NoteState: ObservableObject {
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         currentNoteModified = attrs?[.modificationDate] as? Date
 
+        scrollFraction = 0
+
         let modeKey = "mode-\(url.lastPathComponent)"
         isPreviewMode = UserDefaults.standard.bool(forKey: modeKey)
 
@@ -141,6 +158,81 @@ final class NoteState: ObservableObject {
         isPreviewMode.toggle()
         if let url = selectedNoteURL {
             UserDefaults.standard.set(isPreviewMode, forKey: "mode-\(url.lastPathComponent)")
+        }
+    }
+
+    // MARK: - Navigation History
+
+    func navigateBack() {
+        guard canGoBack else { return }
+        var targetIndex = navigationIndex - 1
+        while targetIndex >= 0 {
+            let url = navigationHistory[targetIndex]
+            if FileManager.default.fileExists(atPath: url.path) {
+                navigationIndex = targetIndex
+                isNavigatingHistory = true
+                openNote(url: url)
+                isNavigatingHistory = false
+                updateNavigationFlags()
+                return
+            }
+            navigationHistory.remove(at: targetIndex)
+            targetIndex -= 1
+            navigationIndex -= 1
+        }
+        updateNavigationFlags()
+    }
+
+    func navigateForward() {
+        guard canGoForward else { return }
+        var targetIndex = navigationIndex + 1
+        while targetIndex < navigationHistory.count {
+            let url = navigationHistory[targetIndex]
+            if FileManager.default.fileExists(atPath: url.path) {
+                navigationIndex = targetIndex
+                isNavigatingHistory = true
+                openNote(url: url)
+                isNavigatingHistory = false
+                updateNavigationFlags()
+                return
+            }
+            navigationHistory.remove(at: targetIndex)
+        }
+        updateNavigationFlags()
+    }
+
+    private func pushToHistory(url: URL) {
+        guard !isNavigatingHistory else { return }
+
+        if navigationIndex >= 0 && navigationIndex < navigationHistory.count
+            && navigationHistory[navigationIndex] == url {
+            return
+        }
+
+        // Trim forward history (browser behavior)
+        if navigationIndex + 1 < navigationHistory.count {
+            navigationHistory.removeSubrange((navigationIndex + 1)...)
+        }
+
+        navigationHistory.append(url)
+
+        // Enforce max size
+        if navigationHistory.count > maxHistorySize {
+            navigationHistory.removeFirst()
+        }
+
+        navigationIndex = navigationHistory.count - 1
+        updateNavigationFlags()
+    }
+
+    private func updateNavigationFlags() {
+        canGoBack = navigationIndex > 0
+        canGoForward = navigationIndex < navigationHistory.count - 1
+    }
+
+    func updateHistoryURL(from oldURL: URL, to newURL: URL) {
+        for i in navigationHistory.indices where navigationHistory[i] == oldURL {
+            navigationHistory[i] = newURL
         }
     }
 
@@ -288,6 +380,7 @@ final class NoteState: ObservableObject {
                 selectedNoteURLs.remove(url)
                 selectedNoteURLs.insert(targetURL)
             }
+            updateHistoryURL(from: url, to: targetURL)
             NoteMetadataService.shared.updatePath(from: url, to: targetURL)
             appState.vaultManager.loadFileTree()
         } catch {
