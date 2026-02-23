@@ -10,7 +10,7 @@ struct ContentView: View {
                 SidebarView()
                     .environmentObject(appState)
                     .environmentObject(noteState)
-                    .frame(minWidth: 180, idealWidth: 220, maxWidth: 400)
+                    .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 400)
             } detail: {
                 EditorView()
                     .environmentObject(appState)

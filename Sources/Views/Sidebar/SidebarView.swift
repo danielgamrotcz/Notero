@@ -98,7 +98,6 @@ struct SidebarView: View {
                 sidebarHeatmap
             }
         }
-        .frame(minWidth: 180, maxWidth: 400)
         .onChange(of: searchText) { _, newValue in
             focusedSearchResultIndex = 0
             Task {
