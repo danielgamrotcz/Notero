@@ -35,7 +35,7 @@ struct ContentView: View {
                 .environmentObject(appState)
                 .environmentObject(noteState)
         }
-        .focusedObject(noteState)
+        .focusedSceneObject(noteState)
         .navigationTitle(windowTitle)
         .onAppear {
             noteState.configure(appState: appState)
