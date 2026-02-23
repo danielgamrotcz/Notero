@@ -166,22 +166,41 @@ enum MarkdownRenderer {
     }
 
     private static func processTaskLists(_ html: String) -> String {
+        let lines = html.components(separatedBy: "\n")
+        var result: [String] = []
         var index = 0
-        return html.components(separatedBy: "\n").map { line in
+        var inTaskList = false
+
+        for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("- [x] ") || trimmed.hasPrefix("- [X] ") {
+            let isTask = trimmed.hasPrefix("- [x] ") || trimmed.hasPrefix("- [X] ") || trimmed.hasPrefix("- [ ] ")
+
+            if isTask {
+                if !inTaskList {
+                    result.append("")
+                    result.append("<div class='task-list'>")
+                    inTaskList = true
+                }
+                let checked = trimmed.hasPrefix("- [x] ") || trimmed.hasPrefix("- [X] ")
                 let content = String(trimmed.dropFirst(6))
-                let result = "<label><input type='checkbox' checked data-index='\(index)'> \(content)</label><br>"
+                let checkedAttr = checked ? " checked" : ""
+                result.append("<label><input type='checkbox'\(checkedAttr) data-index='\(index)'> \(content)</label><br>")
                 index += 1
-                return result
-            } else if trimmed.hasPrefix("- [ ] ") {
-                let content = String(trimmed.dropFirst(6))
-                let result = "<label><input type='checkbox' data-index='\(index)'> \(content)</label><br>"
-                index += 1
-                return result
+            } else {
+                if inTaskList {
+                    result.append("</div>")
+                    result.append("")
+                    inTaskList = false
+                }
+                result.append(line)
             }
-            return line
-        }.joined(separator: "\n")
+        }
+
+        if inTaskList {
+            result.append("</div>")
+        }
+
+        return result.joined(separator: "\n")
     }
 
     private static func processTables(_ html: String) -> String {
