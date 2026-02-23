@@ -221,6 +221,7 @@ final class AppState: ObservableObject {
                     noteState.selectedNoteURLs.remove(url)
                     noteState.selectedNoteURLs.insert(newURL)
                 }
+                noteState.updateHistoryURL(from: url, to: newURL)
             }
         }
         renamingIsNew = false
@@ -264,6 +265,7 @@ extension AppState {
 
 extension Notification.Name {
     static let aiTextImproved = Notification.Name("NoteroAITextImproved")
+    static let insertMarkdownFormat = Notification.Name("NoteroInsertMarkdownFormat")
 }
 
 private extension Double {

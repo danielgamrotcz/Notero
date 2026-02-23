@@ -139,7 +139,7 @@ struct NoteroApp: App {
                 .keyboardShortcut("i", modifiers: .command)
 
                 Button("Insert Link") {
-                    insertMarkdown("[", "](url)")
+                    insertMarkdown("[", "]()", cursorOffset: 1)
                 }
                 .keyboardShortcut("k", modifiers: .command)
 
@@ -194,6 +194,20 @@ struct NoteroApp: App {
                     appState.vaultManager.loadFileTree()
                 }
                 .keyboardShortcut("r", modifiers: .command)
+
+                Divider()
+
+                Button("Back") {
+                    noteState?.navigateBack()
+                }
+                .keyboardShortcut("[", modifiers: .command)
+                .disabled(noteState?.canGoBack != true)
+
+                Button("Forward") {
+                    noteState?.navigateForward()
+                }
+                .keyboardShortcut("]", modifiers: .command)
+                .disabled(noteState?.canGoForward != true)
 
                 Divider()
 
@@ -453,14 +467,18 @@ struct NoteroApp: App {
         appState.favoritesManager.toggleFavorite(path)
     }
 
-    private func insertMarkdown(_ prefix: String, _ suffix: String) {
-        noteState?.currentContent += prefix + suffix
+    private func insertMarkdown(_ prefix: String, _ suffix: String, cursorOffset: Int = 0) {
+        NotificationCenter.default.post(
+            name: .insertMarkdownFormat, object: nil,
+            userInfo: ["type": "wrap", "prefix": prefix, "suffix": suffix, "cursorOffset": cursorOffset]
+        )
     }
 
     private func insertLinePrefix(_ prefix: String) {
-        if let content = noteState?.currentContent {
-            noteState?.currentContent = prefix + content
-        }
+        NotificationCenter.default.post(
+            name: .insertMarkdownFormat, object: nil,
+            userInfo: ["type": "linePrefix", "prefix": prefix]
+        )
     }
 
     // MARK: - URL Scheme
