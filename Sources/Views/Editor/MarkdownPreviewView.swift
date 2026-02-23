@@ -46,7 +46,10 @@ struct MarkdownPreviewView: NSViewRepresentable {
         (function() {
             var el = document.getElementById('content');
             if (!el) return false;
-            el.innerHTML = atob('\(base64)');
+            var binary = atob('\(base64)');
+            var bytes = new Uint8Array(binary.length);
+            for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            el.innerHTML = new TextDecoder().decode(bytes);
             attachListeners();
             hljs.highlightAll();
             return true;
