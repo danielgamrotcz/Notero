@@ -205,6 +205,30 @@ final class AppState: ObservableObject {
         }
     }
 
+    func moveItems(_ urls: [URL], to folderURL: URL) {
+        for url in urls {
+            guard let newURL = vaultManager.moveItem(from: url, to: folderURL) else { continue }
+            for noteState in noteStates.allObjects {
+                if noteState.selectedNoteURL == url {
+                    noteState.selectedNoteURL = newURL
+                }
+                if noteState.selectedNoteURLs.contains(url) {
+                    noteState.selectedNoteURLs.remove(url)
+                    noteState.selectedNoteURLs.insert(newURL)
+                }
+                noteState.updateHistoryURL(from: url, to: newURL)
+            }
+            NoteMetadataService.shared.updatePath(from: url, to: newURL)
+
+            let oldRelative = favoritesManager.relativePath(for: url, vaultURL: vaultManager.vaultURL)
+            if favoritesManager.isFavorite(oldRelative) {
+                let newRelative = favoritesManager.relativePath(for: newURL, vaultURL: vaultManager.vaultURL)
+                favoritesManager.removeFavorite(oldRelative)
+                favoritesManager.addFavorite(newRelative)
+            }
+        }
+    }
+
     func commitRename(url: URL, newName: String) {
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {

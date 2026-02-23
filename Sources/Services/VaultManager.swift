@@ -203,13 +203,30 @@ final class VaultManager: ObservableObject {
         }
     }
 
-    func moveItem(from sourceURL: URL, to destinationFolderURL: URL) {
-        let newURL = destinationFolderURL.appendingPathComponent(sourceURL.lastPathComponent)
+    @discardableResult
+    func moveItem(from sourceURL: URL, to destinationFolderURL: URL) -> URL? {
+        var newURL = destinationFolderURL.appendingPathComponent(sourceURL.lastPathComponent)
+
+        if fileManager.fileExists(atPath: newURL.path) && newURL != sourceURL {
+            let baseName = sourceURL.deletingPathExtension().lastPathComponent
+            let ext = sourceURL.pathExtension
+            var counter = 1
+            repeat {
+                let name = ext.isEmpty
+                    ? "\(baseName) \(counter)"
+                    : "\(baseName) \(counter).\(ext)"
+                newURL = destinationFolderURL.appendingPathComponent(name)
+                counter += 1
+            } while fileManager.fileExists(atPath: newURL.path)
+        }
+
         do {
             try fileManager.moveItem(at: sourceURL, to: newURL)
             loadFileTree()
+            return newURL
         } catch {
             Log.vault.error("Move failed: \(error.localizedDescription)")
+            return nil
         }
     }
 

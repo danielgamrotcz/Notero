@@ -6,6 +6,7 @@ struct FileTreeView: View {
     let nodes: [FileTreeNode]
     var expandedFolders: Binding<Set<URL>>?
     var visibleURLs: [URL] = []
+    @State private var dropTargetFolderURL: URL?
 
     var body: some View {
         ForEach(nodes) { (node: FileTreeNode) in
@@ -50,6 +51,17 @@ struct FileTreeView: View {
                                 }
                         }
                     }
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(dropTargetFolderURL == folderNode.url ? Color.accentColor.opacity(0.3) : Color.clear)
+                    )
+                    .onDrop(of: [.plainText], delegate: FolderDropDelegate(
+                        folderURL: folderNode.url,
+                        dropTargetFolderURL: $dropTargetFolderURL,
+                        appState: appState,
+                        noteState: noteState
+                    ))
+                    .draggable(folderNode.url.absoluteString)
                     .contextMenu { folderContextMenu(folder: folderNode) }
                     if isExpanded.wrappedValue {
                         FileTreeView(
@@ -202,6 +214,74 @@ struct FileTreeView: View {
         Button("Reveal in Finder") {
             appState.vaultManager.revealInFinder(url: folder.url)
         }
+    }
+}
+
+// MARK: - Folder Drop Delegate
+
+struct FolderDropDelegate: DropDelegate {
+    let folderURL: URL
+    @Binding var dropTargetFolderURL: URL?
+    let appState: AppState
+    let noteState: NoteState
+
+    func dropEntered(info: DropInfo) {
+        dropTargetFolderURL = folderURL
+    }
+
+    func dropExited(info: DropInfo) {
+        if dropTargetFolderURL == folderURL {
+            dropTargetFolderURL = nil
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func validateDrop(info: DropInfo) -> Bool {
+        true
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        dropTargetFolderURL = nil
+
+        // Multi-select: move all selected notes
+        if noteState.selectedNoteURLs.count > 1 {
+            let urls = noteState.selectedNoteURLs.filter { canMove(from: $0, to: folderURL) }
+            guard !urls.isEmpty else { return false }
+            appState.moveItems(Array(urls), to: folderURL)
+            return true
+        }
+
+        // Single item from drag provider
+        guard let provider = info.itemProviders(for: [.plainText]).first else { return false }
+        provider.loadItem(forTypeIdentifier: "public.plain-text", options: nil) { data, _ in
+            guard let data = data as? Data,
+                  let urlString = String(data: data, encoding: .utf8) else { return }
+            let sourceURL = URL(fileURLWithPath: URL(string: urlString)?.path ?? urlString)
+            guard self.canMove(from: sourceURL, to: self.folderURL) else { return }
+            Task { @MainActor in
+                appState.moveItems([sourceURL], to: folderURL)
+            }
+        }
+        return true
+    }
+
+    private func canMove(from sourceURL: URL, to targetFolderURL: URL) -> Bool {
+        // Don't move into the same parent
+        if sourceURL.deletingLastPathComponent().standardizedFileURL == targetFolderURL.standardizedFileURL {
+            return false
+        }
+        // Don't move a folder into itself
+        if sourceURL.standardizedFileURL == targetFolderURL.standardizedFileURL {
+            return false
+        }
+        // Don't move a folder into its own descendant
+        if targetFolderURL.standardizedFileURL.path.hasPrefix(sourceURL.standardizedFileURL.path + "/") {
+            return false
+        }
+        return true
     }
 }
 
