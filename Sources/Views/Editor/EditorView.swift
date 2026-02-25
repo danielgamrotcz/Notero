@@ -32,6 +32,7 @@ struct EditorView: View {
                             showLineNumbers: appState.showLineNumbers,
                             spellCheck: appState.spellCheckEnabled,
                             noteURL: noteState.selectedNoteURL,
+                            linkResolver: appState.linkResolver,
                             onTextChange: { newText in
                                 guard let url = noteState.selectedNoteURL else { return }
                                 noteState.isEditing = true

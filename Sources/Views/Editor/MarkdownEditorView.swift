@@ -1,12 +1,20 @@
 import SwiftUI
 import AppKit
 
+protocol WikiLinkCompletionDelegate: AnyObject {
+    var isCompletionActive: Bool { get }
+    func moveCompletionSelection(by delta: Int)
+    func acceptCompletion()
+    func dismissCompletion()
+}
+
 struct MarkdownEditorView: NSViewRepresentable {
     @Binding var text: String
     let fontSize: CGFloat
     let showLineNumbers: Bool
     let spellCheck: Bool
     let noteURL: URL?
+    var linkResolver: LinkResolver?
     var onTextChange: ((String) -> Void)?
     var pendingSearchHighlight: Binding<String?>?
     var initialScrollFraction: CGFloat = 0
@@ -55,6 +63,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         ]
 
         textView.delegate = context.coordinator
+        textView.completionDelegate = context.coordinator
         textView.string = text
 
         DispatchQueue.main.async {
@@ -97,6 +106,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         let coordinator = context.coordinator
 
         if textView.string != text {
+            coordinator.dismissCompletion()
             // Save scroll and cursor position for the old note
             if let oldURL = coordinator.currentURL {
                 coordinator.scrollPositions[oldURL] = coordinator.lastKnownScrollY
@@ -170,7 +180,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, NSTextViewDelegate {
+    @MainActor class Coordinator: NSObject, NSTextViewDelegate, WikiLinkCompletionDelegate {
         var parent: MarkdownEditorView
         weak var textView: MarkdownTextView?
         private var highlighter: MarkdownHighlighter
@@ -179,6 +189,14 @@ struct MarkdownEditorView: NSViewRepresentable {
         var cursorPositions: [URL: [NSValue]] = [:]
         var currentURL: URL?
         var lastKnownScrollY: CGFloat = 0
+
+        // Wiki-link autocomplete
+        private let completionPanel = WikiLinkCompletionPanel()
+        private(set) var isCompletionActive = false
+        private var completionAnchor = 0
+        private var completionResults: [(name: String, url: URL)] = []
+        private var completionSelectedIndex = 0
+        private var allNoteNames: [(name: String, url: URL)] = []
 
         init(_ parent: MarkdownEditorView) {
             self.parent = parent
@@ -275,7 +293,163 @@ struct MarkdownEditorView: NSViewRepresentable {
             parent.text = newText
             parent.onTextChange?(newText)
             applyEditHighlighting()
+            checkForWikiLinkTrigger()
         }
+
+        // MARK: - Wiki-link autocomplete
+
+        private func checkForWikiLinkTrigger() {
+            guard let textView = textView else { return }
+            let text = textView.string as NSString
+            let cursorPos = textView.selectedRange().location
+
+            if isCompletionActive {
+                updateCompletionQuery()
+                return
+            }
+
+            guard cursorPos >= 2 else { return }
+            let trigger = text.substring(
+                with: NSRange(location: cursorPos - 2, length: 2)
+            )
+            if trigger == "[[" {
+                activateCompletion(anchorAt: cursorPos)
+            }
+        }
+
+        private func activateCompletion(anchorAt position: Int) {
+            guard let resolver = parent.linkResolver else { return }
+            isCompletionActive = true
+            completionAnchor = position
+            completionSelectedIndex = 0
+            allNoteNames = resolver.allNoteNames()
+            completionResults = Array(allNoteNames.prefix(10))
+            showCompletionPanel()
+        }
+
+        private func updateCompletionQuery() {
+            guard let textView = textView, isCompletionActive else { return }
+            let text = textView.string as NSString
+            let cursorPos = textView.selectedRange().location
+
+            guard cursorPos >= completionAnchor else {
+                dismissCompletion()
+                return
+            }
+
+            // Verify [[ is still there
+            let bracketPos = completionAnchor - 2
+            guard bracketPos >= 0,
+                  bracketPos + 2 <= text.length,
+                  text.substring(with: NSRange(location: bracketPos, length: 2)) == "[["
+            else {
+                dismissCompletion()
+                return
+            }
+
+            let queryLength = cursorPos - completionAnchor
+            let queryRange = NSRange(location: completionAnchor, length: queryLength)
+            let query = text.substring(with: queryRange)
+
+            // Dismiss on newline or manual close
+            if query.contains("\n") || query.contains("]]") {
+                dismissCompletion()
+                return
+            }
+
+            completionSelectedIndex = 0
+
+            if let resolver = parent.linkResolver {
+                if query.isEmpty {
+                    completionResults = Array(allNoteNames.prefix(10))
+                } else {
+                    completionResults = Array(
+                        resolver.fuzzyMatch(query: query, in: allNoteNames).prefix(10)
+                    )
+                }
+            }
+
+            if completionResults.isEmpty {
+                completionPanel.dismiss()
+            } else {
+                showCompletionPanel()
+            }
+        }
+
+        private func showCompletionPanel() {
+            guard let textView = textView, let window = textView.window else { return }
+            guard let layoutManager = textView.layoutManager,
+                  let textContainer = textView.textContainer else { return }
+
+            let anchorCharIndex = max(0, completionAnchor - 2)
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: NSRange(location: anchorCharIndex, length: 1),
+                actualCharacterRange: nil
+            )
+            var lineRect = layoutManager.boundingRect(
+                forGlyphRange: glyphRange, in: textContainer
+            )
+            lineRect.origin.x += textView.textContainerInset.width
+            lineRect.origin.y += textView.textContainerInset.height
+
+            let viewRect = textView.convert(lineRect, to: nil)
+
+            completionPanel.show(
+                relativeTo: viewRect,
+                in: window,
+                results: completionResults,
+                selectedIndex: completionSelectedIndex,
+                onSelect: { [weak self] name in self?.insertCompletion(name) }
+            )
+        }
+
+        func dismissCompletion() {
+            isCompletionActive = false
+            completionPanel.dismiss()
+            completionResults = []
+        }
+
+        func moveCompletionSelection(by delta: Int) {
+            guard !completionResults.isEmpty else { return }
+            let newIndex = completionSelectedIndex + delta
+            completionSelectedIndex = max(0, min(completionResults.count - 1, newIndex))
+            completionPanel.update(
+                results: completionResults,
+                selectedIndex: completionSelectedIndex,
+                onSelect: { [weak self] name in self?.insertCompletion(name) }
+            )
+        }
+
+        func acceptCompletion() {
+            guard completionSelectedIndex < completionResults.count else {
+                dismissCompletion()
+                return
+            }
+            insertCompletion(completionResults[completionSelectedIndex].name)
+        }
+
+        private func insertCompletion(_ name: String) {
+            guard let textView = textView,
+                  let storage = textView.textStorage else { return }
+            let cursorPos = textView.selectedRange().location
+            let replaceRange = NSRange(
+                location: completionAnchor,
+                length: cursorPos - completionAnchor
+            )
+            let replacement = "\(name)]]"
+
+            textView.breakUndoCoalescing()
+            if textView.shouldChangeText(in: replaceRange, replacementString: replacement) {
+                storage.replaceCharacters(in: replaceRange, with: replacement)
+                textView.didChangeText()
+                let newCursorPos = completionAnchor + (replacement as NSString).length
+                textView.setSelectedRange(NSRange(location: newCursorPos, length: 0))
+            }
+
+            dismissCompletion()
+        }
+
+        // MARK: - Highlighting
 
         func applyFullHighlighting() {
             guard let textView = textView,
@@ -311,8 +485,32 @@ struct MarkdownEditorView: NSViewRepresentable {
 }
 
 class MarkdownTextView: NSTextView {
+    weak var completionDelegate: WikiLinkCompletionDelegate?
+
     override var readablePasteboardTypes: [NSPasteboard.PasteboardType] {
         [.string]
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if let delegate = completionDelegate, delegate.isCompletionActive {
+            switch Int(event.keyCode) {
+            case 125: // Down arrow
+                delegate.moveCompletionSelection(by: 1)
+                return
+            case 126: // Up arrow
+                delegate.moveCompletionSelection(by: -1)
+                return
+            case 36, 48: // Return, Tab
+                delegate.acceptCompletion()
+                return
+            case 53: // Escape
+                delegate.dismissCompletion()
+                return
+            default:
+                break
+            }
+        }
+        super.keyDown(with: event)
     }
 
     override func paste(_ sender: Any?) {
