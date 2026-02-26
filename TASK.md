@@ -93,7 +93,7 @@ Generate all required sizes: 16, 32, 64, 128, 256, 512, 1024px (and @2x variants
 
 ## Vault (File Storage)
 
-Default vault location: `~/Documents/Notero/`
+Default vault location: `~/Library/CloudStorage/GoogleDrive-daniel@gamrot.cz/Můj disk/Notero/`
 
 - Create this folder on first launch if it doesn't exist
 - Support iCloud Documents (the folder can be inside iCloud Drive/Documents — no special iCloud API needed, just file system access)

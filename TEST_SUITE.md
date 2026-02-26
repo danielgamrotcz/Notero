@@ -306,9 +306,9 @@ Write and run code (or manual filesystem tests) to verify these edge cases:
 - Fuzzy filter must narrow results as user types without lag
 
 ### 5.7 Metadata sidecar path consistency
-- Create note at `~/Documents/Notero/Projects/Alpha.md`
+- Create note at `~/Library/CloudStorage/GoogleDrive-daniel@gamrot.cz/Můj disk/Notero/Projects/Alpha.md`
 - Sidecar must be at `~/.notero/meta/{hash}/Projects/Alpha.md.json`
-- Move note to `~/Documents/Notero/Alpha.md` via VaultManager
+- Move note to `~/Library/CloudStorage/GoogleDrive-daniel@gamrot.cz/Můj disk/Notero/Alpha.md` via VaultManager
 - Call `NoteMetadataService.updatePath(from:to:)`
 - Sidecar must now be at `~/.notero/meta/{hash}/Alpha.md.json`
 - Old sidecar must be deleted

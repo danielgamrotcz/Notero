@@ -15,7 +15,7 @@ xcodebuild build -project Notero.xcodeproj -scheme Notero -configuration Release
 
 ## First Launch
 
-1. On first launch, Notero creates a vault at `~/Documents/Notero/`
+1. On first launch, Notero creates a vault at `~/Library/CloudStorage/GoogleDrive-daniel@gamrot.cz/Můj disk/Notero/`
 2. You can change the vault location in **Settings > General**
 3. Create notes with `Cmd+N`, folders with `Cmd+Shift+N`
 4. All notes are saved as `.md` files — compatible with any Markdown editor
