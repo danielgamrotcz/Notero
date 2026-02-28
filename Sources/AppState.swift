@@ -102,6 +102,8 @@ final class AppState: ObservableObject {
             self.favoritesExpandedFolders = Set(paths.map { vaultURL.appendingPathComponent($0) })
         }
 
+        favoritesManager.vaultURL = vault.vaultURL
+
         setupSettingsSync()
         syncVaultPathToAppGroup()
 

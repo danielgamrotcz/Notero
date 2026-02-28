@@ -6,6 +6,8 @@ final class FavoritesManager: ObservableObject {
     @Published var favorites: Set<String> = [] // vault-relative paths
     @Published var orderedFavorites: [String] = [] // for display order
 
+    var vaultURL: URL?
+
     private let favoritesKey = "favorites"
     private let orderKey = "favoritesOrder"
 
@@ -66,5 +68,13 @@ final class FavoritesManager: ObservableObject {
     private func save() {
         UserDefaults.standard.set(Array(favorites), forKey: favoritesKey)
         UserDefaults.standard.set(orderedFavorites, forKey: orderKey)
+        syncToFile()
+    }
+
+    private func syncToFile() {
+        guard let vaultURL else { return }
+        let fileURL = vaultURL.appendingPathComponent("favourites.json")
+        guard let data = try? JSONEncoder().encode(orderedFavorites) else { return }
+        try? data.write(to: fileURL, options: .atomic)
     }
 }
