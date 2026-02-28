@@ -111,7 +111,9 @@ struct SyncSettingsView: View {
                 try KeychainManager.save(key: "NoteroSupabaseURL", value: supabaseURL)
             }
             if !serviceKeyInput.trimmingCharacters(in: .whitespaces).isEmpty {
-                try KeychainManager.save(key: "NoteroSupabaseKey", value: serviceKeyInput)
+                // Strip all whitespace — JWTs pasted from web often contain line breaks
+                let cleanKey = serviceKeyInput.filter { !$0.isWhitespace }
+                try KeychainManager.save(key: "NoteroSupabaseKey", value: cleanKey)
             }
             if !userIdInput.trimmingCharacters(in: .whitespaces).isEmpty {
                 try KeychainManager.save(key: "NoteroSupabaseUserID", value: userIdInput)
