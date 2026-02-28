@@ -11,6 +11,11 @@ final class VaultManager: ObservableObject {
     private let fileManager = FileManager.default
     var currentSortOrder: NoteSortOrder = .nameAscending
     var onFileSystemChange: (() -> Void)?
+    var onNoteCreated: ((URL) -> Void)?
+    var onItemRenamed: ((URL, URL) -> Void)?
+    var onItemMoved: ((URL, URL) -> Void)?
+    var onItemDeleted: ((URL) -> Void)?
+    var onFolderCreated: ((URL) -> Void)?
 
     init() {
         if let savedPath = UserDefaults.standard.string(forKey: "vaultPath") {
@@ -119,6 +124,7 @@ final class VaultManager: ObservableObject {
         let created = fileManager.createFile(atPath: targetURL.path, contents: Data())
         if created {
             loadFileTree()
+            onNoteCreated?(targetURL)
             return targetURL
         }
         return nil
@@ -131,6 +137,7 @@ final class VaultManager: ObservableObject {
         do {
             try fileManager.createDirectory(at: targetURL, withIntermediateDirectories: true)
             loadFileTree()
+            onFolderCreated?(targetURL)
             return targetURL
         } catch {
             Log.vault.error("Failed to create folder: \(error.localizedDescription)")
@@ -167,6 +174,7 @@ final class VaultManager: ObservableObject {
         do {
             try fileManager.moveItem(at: url, to: newURL)
             loadFileTree()
+            onItemRenamed?(url, newURL)
             return newURL
         } catch {
             Log.vault.error("Rename failed: \(error.localizedDescription)")
@@ -175,6 +183,7 @@ final class VaultManager: ObservableObject {
     }
 
     func moveToTrash(url: URL) {
+        onItemDeleted?(url)
         do {
             try fileManager.trashItem(at: url, resultingItemURL: nil)
             loadFileTree()
@@ -223,6 +232,7 @@ final class VaultManager: ObservableObject {
         do {
             try fileManager.moveItem(at: sourceURL, to: newURL)
             loadFileTree()
+            onItemMoved?(sourceURL, newURL)
             return newURL
         } catch {
             Log.vault.error("Move failed: \(error.localizedDescription)")

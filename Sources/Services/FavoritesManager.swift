@@ -7,6 +7,7 @@ final class FavoritesManager: ObservableObject {
     @Published var orderedFavorites: [String] = [] // for display order
 
     var vaultURL: URL?
+    var onFavouritesChanged: (([String]) -> Void)?
 
     private let favoritesKey = "favorites"
     private let orderKey = "favoritesOrder"
@@ -69,6 +70,7 @@ final class FavoritesManager: ObservableObject {
         UserDefaults.standard.set(Array(favorites), forKey: favoritesKey)
         UserDefaults.standard.set(orderedFavorites, forKey: orderKey)
         syncToFile()
+        onFavouritesChanged?(orderedFavorites)
     }
 
     private func syncToFile() {

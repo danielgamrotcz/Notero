@@ -12,6 +12,7 @@ final class AppState: ObservableObject {
     let ollamaService = OllamaService()
     let favoritesManager = FavoritesManager()
     let semanticSearchService = SemanticSearchService()
+    let supabaseService = SupabaseService()
 
     // Per-window NoteState registry
     private var noteStates = NSHashTable<NoteState>.weakObjects()
@@ -114,6 +115,8 @@ final class AppState: ObservableObject {
                 noteState.handleAutoSaveCompletion(content: content, url: url)
             }
         }
+
+        setupSupabaseCallbacks()
 
         vaultManager.onFileSystemChange = { [weak self] in
             guard let self = self else { return }
@@ -252,6 +255,106 @@ final class AppState: ObservableObject {
         }
         renamingIsNew = false
         renamingItemURL = nil
+    }
+}
+
+// MARK: - Supabase Sync
+
+extension AppState {
+    var supabaseConfig: SupabaseService.Config? {
+        guard let url = KeychainManager.load(key: "NoteroSupabaseURL"),
+              let key = KeychainManager.load(key: "NoteroSupabaseKey"),
+              let uid = KeychainManager.load(key: "NoteroSupabaseUserID") else {
+            return nil
+        }
+        let config = SupabaseService.Config(url: url, serviceKey: key, userId: uid)
+        return config.isValid ? config : nil
+    }
+
+    func setupSupabaseCallbacks() {
+        let supabase = supabaseService
+        let vault = vaultManager
+        let favs = favoritesManager
+
+        // Sync note after auto-save
+        let existingOnDidSave = autoSaveService.onDidSave
+        autoSaveService.onDidSave = { [weak self] content, url in
+            existingOnDidSave?(content, url)
+            guard let self, let config = self.supabaseConfig else { return }
+            let path = SupabaseService.relativePath(for: url, vaultURL: vault.vaultURL)
+            let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
+            Task.detached { await supabase.syncNote(path: path, title: title, content: content, config: config) }
+        }
+
+        // Note created
+        vault.onNoteCreated = { [weak self] url in
+            guard let self, let config = self.supabaseConfig else { return }
+            let content = vault.readNote(at: url) ?? ""
+            let path = SupabaseService.relativePath(for: url, vaultURL: vault.vaultURL)
+            let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
+            Task.detached { await supabase.syncNote(path: path, title: title, content: content, config: config) }
+        }
+
+        // Item renamed
+        vault.onItemRenamed = { [weak self] oldURL, newURL in
+            guard let self, let config = self.supabaseConfig else { return }
+            let isDir = (try? newURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            if isDir {
+                let oldPath = SupabaseService.relativePath(for: oldURL, vaultURL: vault.vaultURL)
+                let newPath = SupabaseService.relativePath(for: newURL, vaultURL: vault.vaultURL)
+                Task.detached {
+                    await supabase.deleteFolder(path: oldPath, config: config)
+                    await supabase.syncFolder(path: newPath, parentPath: nil, config: config)
+                }
+            } else {
+                let oldPath = SupabaseService.relativePath(for: oldURL, vaultURL: vault.vaultURL)
+                let newPath = SupabaseService.relativePath(for: newURL, vaultURL: vault.vaultURL)
+                Task.detached { await supabase.renameNote(oldPath: oldPath, newPath: newPath, config: config) }
+            }
+        }
+
+        // Item moved
+        vault.onItemMoved = { [weak self] oldURL, newURL in
+            guard let self, let config = self.supabaseConfig else { return }
+            let isDir = (try? newURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            if isDir {
+                let oldPath = SupabaseService.relativePath(for: oldURL, vaultURL: vault.vaultURL)
+                let newPath = SupabaseService.relativePath(for: newURL, vaultURL: vault.vaultURL)
+                Task.detached {
+                    await supabase.deleteFolder(path: oldPath, config: config)
+                    await supabase.syncFolder(path: newPath, parentPath: nil, config: config)
+                }
+            } else {
+                let oldPath = SupabaseService.relativePath(for: oldURL, vaultURL: vault.vaultURL)
+                let newPath = SupabaseService.relativePath(for: newURL, vaultURL: vault.vaultURL)
+                Task.detached { await supabase.renameNote(oldPath: oldPath, newPath: newPath, config: config) }
+            }
+        }
+
+        // Item deleted
+        vault.onItemDeleted = { [weak self] url in
+            guard let self, let config = self.supabaseConfig else { return }
+            let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            let path = SupabaseService.relativePath(for: url, vaultURL: vault.vaultURL)
+            if isDir {
+                Task.detached { await supabase.deleteFolder(path: path, config: config) }
+            } else {
+                Task.detached { await supabase.deleteNote(path: path, config: config) }
+            }
+        }
+
+        // Folder created
+        vault.onFolderCreated = { [weak self] url in
+            guard let self, let config = self.supabaseConfig else { return }
+            let path = SupabaseService.relativePath(for: url, vaultURL: vault.vaultURL)
+            Task.detached { await supabase.syncFolder(path: path, parentPath: nil, config: config) }
+        }
+
+        // Favourites changed
+        favs.onFavouritesChanged = { [weak self] paths in
+            guard let self, let config = self.supabaseConfig else { return }
+            Task.detached { await supabase.syncFavourites(paths: paths, config: config) }
+        }
     }
 }
 

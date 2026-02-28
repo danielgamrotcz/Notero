@@ -18,6 +18,12 @@ struct SettingsView: View {
                 .tabItem {
                     Label("AI", systemImage: "sparkles")
                 }
+
+            SyncSettingsView()
+                .environmentObject(appState)
+                .tabItem {
+                    Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                }
         }
         .frame(width: 520, height: 620)
     }
