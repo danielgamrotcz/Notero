@@ -128,7 +128,11 @@ actor SupabaseService {
     }
 
     func testConnection(config: Config) async -> Bool {
-        guard config.isValid else { return false }
+        guard config.isValid else {
+            Log.general.warning("SupabaseService.testConnection: config invalid")
+            return false
+        }
+        Log.general.info("SupabaseService.testConnection url=\(config.url) keyLen=\(config.serviceKey.count) uid=\(config.userId)")
         do {
             _ = try await request(method: "GET", table: "notes",
                                   params: "?select=id&limit=1", config: config)
@@ -231,6 +235,7 @@ actor SupabaseService {
               (200...299).contains(httpResponse.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
             let body = String(data: responseData, encoding: .utf8) ?? ""
+            Log.general.error("Supabase HTTP \(code) \(method) /\(table): \(body)")
             throw URLError(.badServerResponse, userInfo: [
                 NSLocalizedDescriptionKey: "HTTP \(code): \(body)"
             ])
