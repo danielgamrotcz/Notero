@@ -14,7 +14,7 @@ actor SupabaseService {
 
     // MARK: - Public API
 
-    func syncNote(path: String, title: String, content: String, config: Config) async -> Bool {
+    func syncNote(path: String, title: String, content: String, createdAt: Date? = nil, config: Config) async -> Bool {
         guard config.isValid else { return false }
         do {
             let folderPath = (path as NSString).deletingLastPathComponent
@@ -27,6 +27,7 @@ actor SupabaseService {
                 "path": path,
             ]
             if let folderId { body["folder_id"] = folderId }
+            if let createdAt { body["created_at"] = Self.iso8601Formatter.string(from: createdAt) }
 
             _ = try await request(method: "POST", table: "notes", data: body,
                                   extraHeaders: ["Prefer": "resolution=merge-duplicates"], config: config)
@@ -195,6 +196,26 @@ actor SupabaseService {
     }
 
     // MARK: - Helpers
+
+    static func fileCreationDate(for url: URL) -> Date? {
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let date = attrs[.creationDate] as? Date else { return nil }
+        return date
+    }
+
+    func updateNoteCreatedAt(path: String, createdAt: Date, config: Config) async -> Bool {
+        guard config.isValid else { return false }
+        do {
+            let encoded = path.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? path
+            let qs = "?user_id=eq.\(config.userId)&path=eq.\(encoded)"
+            let body: [String: Any] = ["created_at": Self.iso8601Formatter.string(from: createdAt)]
+            _ = try await request(method: "PATCH", table: "notes", data: body, params: qs, config: config)
+            return true
+        } catch {
+            Log.general.warning("SupabaseService.updateNoteCreatedAt failed: \(error)")
+            return false
+        }
+    }
 
     static func relativePath(for url: URL, vaultURL: URL) -> String {
         let path = url.path.replacingOccurrences(of: vaultURL.path + "/", with: "")

@@ -155,6 +155,7 @@ final class AppState: ObservableObject {
         syncState = .syncing
         let vaultURL = vaultManager.vaultURL
         let favPaths = await syncManager.performStartupSync(config: config, vaultURL: vaultURL)
+        await syncManager.backfillCreationDates(config: config, vaultURL: vaultURL)
 
         vaultManager.loadFileTree(sortOrder: sortOrder)
         await searchService.buildIndex()
@@ -340,7 +341,8 @@ extension AppState {
 
                 let path = SupabaseService.relativePath(for: actualURL, vaultURL: vaultURL)
                 let title = SupabaseService.extractTitle(from: content, filename: actualURL.lastPathComponent)
-                let success = await supabase.syncNote(path: path, title: title, content: content, config: config)
+                let createdAt = SupabaseService.fileCreationDate(for: actualURL)
+                let success = await supabase.syncNote(path: path, title: title, content: content, createdAt: createdAt, config: config)
                 if !success { await sync.markNoteDirty(path) }
             }
         }
@@ -357,7 +359,8 @@ extension AppState {
                 }
                 let path = SupabaseService.relativePath(for: url, vaultURL: vaultURL)
                 let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
-                let success = await supabase.syncNote(path: path, title: title, content: content, config: config)
+                let createdAt = SupabaseService.fileCreationDate(for: url)
+                let success = await supabase.syncNote(path: path, title: title, content: content, createdAt: createdAt, config: config)
                 if !success { await sync.markNoteDirty(path) }
             }
         }

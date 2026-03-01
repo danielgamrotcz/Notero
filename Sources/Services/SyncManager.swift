@@ -169,7 +169,8 @@ actor SyncManager {
             if FileManager.default.fileExists(atPath: fileURL.path) {
                 let content = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
                 let title = SupabaseService.extractTitle(from: content, filename: fileURL.lastPathComponent)
-                success = await supabaseService.syncNote(path: path, title: title, content: content, config: config)
+                let createdAt = SupabaseService.fileCreationDate(for: fileURL)
+                success = await supabaseService.syncNote(path: path, title: title, content: content, createdAt: createdAt, config: config)
             } else {
                 success = await supabaseService.deleteNote(path: path, config: config)
             }
@@ -231,7 +232,8 @@ actor SyncManager {
             if !remotePaths.contains(relativePath) {
                 let content = (try? String(contentsOf: localFile, encoding: .utf8)) ?? ""
                 let title = SupabaseService.extractTitle(from: content, filename: localFile.lastPathComponent)
-                await supabaseService.syncNote(path: relativePath, title: title, content: content, config: config)
+                let createdAt = SupabaseService.fileCreationDate(for: localFile)
+                await supabaseService.syncNote(path: relativePath, title: title, content: content, createdAt: createdAt, config: config)
                 Log.sync.debug("Pushed local-only note: \(relativePath)")
             }
         }
@@ -357,6 +359,25 @@ actor SyncManager {
                 result.append(itemURL)
             }
         }
+    }
+
+    // MARK: - Backfill Creation Dates
+
+    func backfillCreationDates(config: SupabaseService.Config, vaultURL: URL) async {
+        guard !UserDefaults.standard.bool(forKey: "creationDateBackfillDone") else { return }
+        Log.sync.info("Starting creation date backfill")
+
+        let files = scanLocalMarkdownFiles(vaultURL: vaultURL)
+        var updated = 0
+        for file in files {
+            let path = SupabaseService.relativePath(for: file, vaultURL: vaultURL)
+            guard let createdAt = SupabaseService.fileCreationDate(for: file) else { continue }
+            let ok = await supabaseService.updateNoteCreatedAt(path: path, createdAt: createdAt, config: config)
+            if ok { updated += 1 }
+        }
+
+        UserDefaults.standard.set(true, forKey: "creationDateBackfillDone")
+        Log.sync.info("Creation date backfill done: \(updated)/\(files.count) notes updated")
     }
 
     // MARK: - Pending Sync Persistence
