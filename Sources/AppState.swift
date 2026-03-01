@@ -145,6 +145,20 @@ final class AppState: ObservableObject {
         } else {
             syncState = .needsSetup
         }
+
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.flushPendingSaves()
+        }
+    }
+
+    private func flushPendingSaves() {
+        for noteState in noteStates.allObjects {
+            guard let url = noteState.selectedNoteURL else { continue }
+            autoSaveService.saveImmediately(content: noteState.currentContent, to: url)
+        }
     }
 
     func performStartupSync() async {
@@ -475,7 +489,7 @@ extension AppState {
                         let vaultURL = self.vaultManager.vaultURL
                         var paths = Set<String>()
                         for noteState in noteStatesTable.allObjects {
-                            guard noteState.isEditing, let url = noteState.selectedNoteURL else { continue }
+                            guard let url = noteState.selectedNoteURL else { continue }
                             paths.insert(SupabaseService.relativePath(for: url, vaultURL: vaultURL))
                         }
                         return paths

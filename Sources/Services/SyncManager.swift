@@ -16,6 +16,11 @@ actor SyncManager {
 
     private static let pullGuardWindow: TimeInterval = 10
     private static let pollInterval: UInt64 = 30_000_000_000 // 30s
+    private static let iso8601Formatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
     private static let pendingSyncURL: URL = {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home.appendingPathComponent(".notero/pending-sync.json")
@@ -222,6 +227,10 @@ actor SyncManager {
                   let content = note["content"] as? String else { continue }
             remotePaths.insert(path)
             let fileURL = vaultURL.appendingPathComponent(path + ".md")
+            guard shouldWriteRemote(note: note, to: fileURL) else {
+                Log.sync.debug("Skipped initial sync write (local newer): \(path)")
+                continue
+            }
             writeRemoteNote(content: content, to: fileURL, relativePath: path)
         }
 
@@ -301,10 +310,27 @@ actor SyncManager {
             return
         }
         let fileURL = vaultURL.appendingPathComponent(path + ".md")
+        guard shouldWriteRemote(note: note, to: fileURL) else {
+            Log.sync.debug("Skipped incremental sync write (local newer): \(path)")
+            return
+        }
         writeRemoteNote(content: content, to: fileURL, relativePath: path)
     }
 
     // MARK: - File Operations
+
+    /// Returns true if remote note should overwrite the local file.
+    /// Skips write when local file is newer than remote `updated_at`.
+    private func shouldWriteRemote(note: [String: Any], to fileURL: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return true }
+        guard let updatedStr = note["updated_at"] as? String,
+              let remoteDate = Self.iso8601Formatter.date(from: updatedStr) else {
+            return false // No remote timestamp → local is authoritative
+        }
+        let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
+        guard let localMod = attrs?[.modificationDate] as? Date else { return true }
+        return remoteDate > localMod
+    }
 
     private func writeRemoteNote(content: String, to fileURL: URL, relativePath: String) {
         recentlyPulledPaths[relativePath] = Date()
