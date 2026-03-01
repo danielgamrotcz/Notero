@@ -259,7 +259,7 @@
             <sparkle:version>32</sparkle:version>
             <sparkle:shortVersionString>1.11.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/danielgamrotcz/Notero/releases/download/v1.11.3/Notero-1.11.3.zip" sparkle:edSignature="gpfZJ6pvGr3HSVtCwyAenwfxxAyRrLt3TLV7QD49aNrxiqwWYkxtzJJaZ2Wik8BUl198pP5feZiqwsysnPegDw==" length="2256795" type="application/octet-stream"/>
+            <enclosure url="https://github.com/danielgamrotcz/Notero/releases/download/v1.11.3/Notero-1.11.3.zip" sparkle:edSignature="IaHoRH1pgfHSl8xj2yo0cyS3UNSCc2yLIvr90Q4F9BDnaGKkQBqeYE/M+egPJ+N8p3s2q6R6S2kLtNKmLYHKAQ==" length="2284342" type="application/octet-stream"/>
         </item>
     </channel>
 </rss>

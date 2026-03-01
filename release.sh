@@ -54,7 +54,7 @@ codesign --force --deep --sign - "$APP_PATH/Notero.app"
 # 4. Zip
 echo "→ Creating $ZIP_NAME..."
 cd "$APP_PATH"
-zip -r "$ZIP_PATH" Notero.app -x "*.DS_Store"
+zip -ry "$ZIP_PATH" Notero.app -x "*.DS_Store"
 cd "$SCRIPT_DIR"
 
 # 5. Sign with Sparkle and update appcast
