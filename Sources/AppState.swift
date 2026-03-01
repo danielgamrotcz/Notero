@@ -310,18 +310,36 @@ extension AppState {
         let sync = syncManager
 
         // Sync note after auto-save (with pull guard)
+        // Detects auto-title rename (FileManager.moveItem in NoteState) and updates DB path before syncing content
         let existingOnDidSave = autoSaveService.onDidSave
         autoSaveService.onDidSave = { [weak self] content, url in
-            existingOnDidSave?(content, url)
+            existingOnDidSave?(content, url)  // May trigger autoTitleRenameIfNeeded → file rename
             guard let self, let config = self.supabaseConfig else { return }
             let vaultURL = vault.vaultURL
+
+            // Read actual URL after potential rename (we're on main thread here)
+            let actualURL = self.noteStates.allObjects.first(where: { $0.selectedNoteURL != nil })?.selectedNoteURL ?? url
+            let wasRenamed = actualURL != url
+
             Task.detached {
-                if await sync.shouldSuppressPush(for: url, vaultURL: vaultURL) {
-                    Log.sync.debug("Suppressed push for recently pulled: \(url.lastPathComponent)")
+                if await sync.shouldSuppressPush(for: actualURL, vaultURL: vaultURL) {
+                    Log.sync.debug("Suppressed push for recently pulled: \(actualURL.lastPathComponent)")
                     return
                 }
-                let path = SupabaseService.relativePath(for: url, vaultURL: vaultURL)
-                let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
+
+                // If file was renamed by auto-title, update path in DB first
+                if wasRenamed {
+                    let oldPath = SupabaseService.relativePath(for: url, vaultURL: vaultURL)
+                    let newPath = SupabaseService.relativePath(for: actualURL, vaultURL: vaultURL)
+                    let renameOk = await supabase.renameNote(oldPath: oldPath, newPath: newPath, config: config)
+                    if !renameOk {
+                        await sync.markNoteDirty(oldPath)
+                        await sync.markNoteDirty(newPath)
+                    }
+                }
+
+                let path = SupabaseService.relativePath(for: actualURL, vaultURL: vaultURL)
+                let title = SupabaseService.extractTitle(from: content, filename: actualURL.lastPathComponent)
                 let success = await supabase.syncNote(path: path, title: title, content: content, config: config)
                 if !success { await sync.markNoteDirty(path) }
             }
