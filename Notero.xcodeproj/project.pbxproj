@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		AA0000000000000000000001 /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000011 /* SupabaseService.swift */; };
 		AA0000000000000000000002 /* SyncSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000012 /* SyncSettingsView.swift */; };
+		AA0000000000000000000003 /* SyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000013 /* SyncManager.swift */; };
 		011BBDF235F57B7CB3337596 /* Color+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77089A50D3DAC140A98F84A0 /* Color+Theme.swift */; };
 		083C34FD0C6D7DBDE3D21116 /* NoteroApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A13797E9424E4A013F881BC /* NoteroApp.swift */; };
 		0DCA7F31533FE1BBEBD73A08 /* MarkdownEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF7AA11228F4E7A580836CF /* MarkdownEditorView.swift */; };
@@ -138,6 +139,7 @@
 		8A5E6E1D305CC664BA2359EF /* AnthropicService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicService.swift; sourceTree = "<group>"; };
 		AA0000000000000000000011 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
 		AA0000000000000000000012 /* SyncSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSettingsView.swift; sourceTree = "<group>"; };
+		AA0000000000000000000013 /* SyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManager.swift; sourceTree = "<group>"; };
 		8CA4A548001E6A9F67CA4D48 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
 		8FD33D6673875DB18AB4F5EA /* NoteHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteHistoryView.swift; sourceTree = "<group>"; };
 		9A0C358478A319EA6CDCD88D /* FindReplaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindReplaceView.swift; sourceTree = "<group>"; };
@@ -353,6 +355,7 @@
 				DBB443D91BBB58E90F2EAD6E /* SearchService.swift */,
 				A1A6FAAADC44F5E16E5882DA /* SemanticSearchService.swift */,
 				AA0000000000000000000011 /* SupabaseService.swift */,
+				AA0000000000000000000013 /* SyncManager.swift */,
 				547BC7E921F9FE97D5E1FDFB /* VaultManager.swift */,
 			);
 			path = Services;
@@ -511,6 +514,7 @@
 				A04DDA80C45BC1C3A83E5DB5 /* AppState.swift in Sources */,
 				AA0000000000000000000001 /* SupabaseService.swift in Sources */,
 				AA0000000000000000000002 /* SyncSettingsView.swift in Sources */,
+				AA0000000000000000000003 /* SyncManager.swift in Sources */,
 				69DC7D71E26A0EB1C488172B /* AutoSaveService.swift in Sources */,
 				011BBDF235F57B7CB3337596 /* Color+Theme.swift in Sources */,
 				C550845B3AF72DDB35D9A8CF /* CommandItem.swift in Sources */,

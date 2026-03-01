@@ -143,6 +143,43 @@ actor SupabaseService {
         }
     }
 
+    // MARK: - Pull Sync
+
+    private static let iso8601Formatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    func fetchChangedNotes(since: Date, config: Config) async throws -> [[String: Any]] {
+        let ts = Self.iso8601Formatter.string(from: since)
+        let encoded = ts.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ts
+        let qs = "?user_id=eq.\(config.userId)&updated_at=gt.\(encoded)&select=id,title,content,path,updated_at&order=updated_at.asc"
+        return try await request(method: "GET", table: "notes", params: qs, config: config)
+    }
+
+    func fetchAllNotes(config: Config) async throws -> [[String: Any]] {
+        let qs = "?user_id=eq.\(config.userId)&select=id,title,content,path,updated_at&order=path.asc"
+        return try await request(method: "GET", table: "notes", params: qs, config: config)
+    }
+
+    func fetchChangedFolders(since: Date, config: Config) async throws -> [[String: Any]] {
+        let ts = Self.iso8601Formatter.string(from: since)
+        let encoded = ts.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ts
+        let qs = "?user_id=eq.\(config.userId)&updated_at=gt.\(encoded)&select=id,name,path&order=path.asc"
+        return try await request(method: "GET", table: "folders", params: qs, config: config)
+    }
+
+    func fetchAllFolders(config: Config) async throws -> [[String: Any]] {
+        let qs = "?user_id=eq.\(config.userId)&select=id,name,path&order=path.asc"
+        return try await request(method: "GET", table: "folders", params: qs, config: config)
+    }
+
+    func fetchFavourites(config: Config) async throws -> [[String: Any]] {
+        let qs = "?user_id=eq.\(config.userId)&select=note_id,sort_order,notes(path)&order=sort_order.asc"
+        return try await request(method: "GET", table: "favourites", params: qs, config: config)
+    }
+
     // MARK: - Helpers
 
     static func relativePath(for url: URL, vaultURL: URL) -> String {

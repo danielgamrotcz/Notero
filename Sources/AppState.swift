@@ -13,6 +13,7 @@ final class AppState: ObservableObject {
     let favoritesManager = FavoritesManager()
     let semanticSearchService = SemanticSearchService()
     let supabaseService = SupabaseService()
+    let syncManager: SyncManager
 
     // Per-window NoteState registry
     private var noteStates = NSHashTable<NoteState>.weakObjects()
@@ -82,6 +83,8 @@ final class AppState: ObservableObject {
         let todayKey = "goal-\(Self.todayKey())"
         self.dailyWordsWritten = defaults.integer(forKey: todayKey)
 
+        self.syncManager = SyncManager(supabaseService: supabaseService)
+
         // Forward VaultManager changes into AppState so SwiftUI redraws immediately
         vault.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -129,6 +132,8 @@ final class AppState: ObservableObject {
         Task {
             await searchService.buildIndex()
         }
+
+        startSyncPolling()
     }
 
     func registerNoteState(_ noteState: NoteState) {
@@ -275,24 +280,39 @@ extension AppState {
         let supabase = supabaseService
         let vault = vaultManager
         let favs = favoritesManager
+        let sync = syncManager
 
-        // Sync note after auto-save
+        // Sync note after auto-save (with pull guard)
         let existingOnDidSave = autoSaveService.onDidSave
         autoSaveService.onDidSave = { [weak self] content, url in
             existingOnDidSave?(content, url)
             guard let self, let config = self.supabaseConfig else { return }
-            let path = SupabaseService.relativePath(for: url, vaultURL: vault.vaultURL)
-            let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
-            Task.detached { await supabase.syncNote(path: path, title: title, content: content, config: config) }
+            let vaultURL = vault.vaultURL
+            Task.detached {
+                if await sync.shouldSuppressPush(for: url, vaultURL: vaultURL) {
+                    Log.sync.debug("Suppressed push for recently pulled: \(url.lastPathComponent)")
+                    return
+                }
+                let path = SupabaseService.relativePath(for: url, vaultURL: vaultURL)
+                let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
+                await supabase.syncNote(path: path, title: title, content: content, config: config)
+            }
         }
 
-        // Note created
+        // Note created (with pull guard)
         vault.onNoteCreated = { [weak self] url in
             guard let self, let config = self.supabaseConfig else { return }
+            let vaultURL = vault.vaultURL
             let content = vault.readNote(at: url) ?? ""
-            let path = SupabaseService.relativePath(for: url, vaultURL: vault.vaultURL)
-            let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
-            Task.detached { await supabase.syncNote(path: path, title: title, content: content, config: config) }
+            Task.detached {
+                if await sync.shouldSuppressPush(for: url, vaultURL: vaultURL) {
+                    Log.sync.debug("Suppressed push for recently pulled new note: \(url.lastPathComponent)")
+                    return
+                }
+                let path = SupabaseService.relativePath(for: url, vaultURL: vaultURL)
+                let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
+                await supabase.syncNote(path: path, title: title, content: content, config: config)
+            }
         }
 
         // Item renamed
@@ -354,6 +374,44 @@ extension AppState {
         favs.onFavouritesChanged = { [weak self] paths in
             guard let self, let config = self.supabaseConfig else { return }
             Task.detached { await supabase.syncFavourites(paths: paths, config: config) }
+        }
+    }
+
+    func startSyncPolling() {
+        let vault = vaultManager
+        let search = searchService
+        let favs = favoritesManager
+        let noteStatesTable = noteStates
+
+        Task {
+            await syncManager.startPolling(
+                configProvider: { [weak self] in
+                    await MainActor.run { self?.supabaseConfig }
+                },
+                vaultURLProvider: { [weak self] in
+                    await MainActor.run { self?.vaultManager.vaultURL ?? URL(fileURLWithPath: NSHomeDirectory()) }
+                },
+                onPullComplete: { [weak self] favPaths in
+                    await MainActor.run {
+                        guard let self else { return }
+                        vault.loadFileTree(sortOrder: self.sortOrder)
+                        Task { await search.buildIndex() }
+
+                        if let favPaths {
+                            favs.replaceFromRemote(favPaths)
+                        }
+
+                        // Refresh open editors if their file was updated
+                        for noteState in noteStatesTable.allObjects {
+                            guard let url = noteState.selectedNoteURL,
+                                  !noteState.isEditing,
+                                  let diskContent = vault.readNote(at: url),
+                                  diskContent != noteState.currentContent else { continue }
+                            noteState.currentContent = diskContent
+                        }
+                    }
+                }
+            )
         }
     }
 }

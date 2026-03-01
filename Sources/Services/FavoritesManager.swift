@@ -50,6 +50,15 @@ final class FavoritesManager: ObservableObject {
         save()
     }
 
+    func replaceFromRemote(_ paths: [String]) {
+        favorites = Set(paths)
+        orderedFavorites = paths
+        UserDefaults.standard.set(Array(favorites), forKey: favoritesKey)
+        UserDefaults.standard.set(orderedFavorites, forKey: orderKey)
+        syncToFile()
+        // No onFavouritesChanged — came from remote, don't push back
+    }
+
     func cleanupDeleted(vaultURL: URL) {
         let fm = FileManager.default
         let deleted = favorites.filter { path in
