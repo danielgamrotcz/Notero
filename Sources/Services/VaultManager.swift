@@ -17,22 +17,13 @@ final class VaultManager: ObservableObject {
     var onItemDeleted: ((URL) -> Void)?
     var onFolderCreated: ((URL) -> Void)?
 
-    init() {
-        if let savedPath = UserDefaults.standard.string(forKey: "vaultPath") {
-            self.vaultURL = URL(fileURLWithPath: savedPath)
+    init(overrideURL: URL? = nil) {
+        if let override = overrideURL {
+            self.vaultURL = override
         } else {
-            let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-            self.vaultURL = documentsURL.appendingPathComponent("Notero")
+            self.vaultURL = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs/Notero")
         }
-        ensureVaultExists()
-        loadFileTree()
-        startWatching()
-    }
-
-    func changeVault(to url: URL) {
-        stopWatching()
-        vaultURL = url
-        UserDefaults.standard.set(url.path, forKey: "vaultPath")
         ensureVaultExists()
         loadFileTree()
         startWatching()

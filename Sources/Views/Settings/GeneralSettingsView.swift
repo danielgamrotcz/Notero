@@ -18,15 +18,12 @@ struct GeneralSettingsView: View {
                 HStack {
                     Text("Location")
                         .frame(width: labelWidth, alignment: .trailing)
-                    Text(appState.vaultManager.vaultURL.path)
+                    Text("iCloud — \(appState.vaultManager.vaultURL.path)")
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .foregroundColor(.secondary)
                         .font(.system(size: 12, design: .monospaced))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Button("Change...") {
-                        chooseVaultLocation()
-                    }
                 }
                 .padding(.vertical, 4)
             }
@@ -138,20 +135,4 @@ struct GeneralSettingsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    private func chooseVaultLocation() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.message = "Choose a folder for your notes vault"
-        panel.prompt = "Choose"
-
-        if panel.runModal() == .OK, let url = panel.url {
-            appState.vaultManager.changeVault(to: url)
-            Task {
-                await appState.searchService.buildIndex()
-            }
-        }
-    }
 }

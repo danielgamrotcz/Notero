@@ -11,13 +11,11 @@ final class IntegrationTests: XCTestCase {
         tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("NoteroIntegration-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        UserDefaults.standard.set(tempDir.path, forKey: "vaultPath")
-        vaultManager = VaultManager()
+        vaultManager = VaultManager(overrideURL: tempDir)
     }
 
     override func tearDown() {
         try? FileManager.default.removeItem(at: tempDir)
-        UserDefaults.standard.removeObject(forKey: "vaultPath")
         super.tearDown()
     }
 

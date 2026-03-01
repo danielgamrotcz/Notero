@@ -49,10 +49,6 @@ struct NoteroApp: App {
                     appState.vaultManager.revealInFinder(url: appState.vaultManager.vaultURL)
                 }
 
-                Button("Change Vault Location...") {
-                    changeVaultLocation()
-                }
-
                 Divider()
 
                 Button("Add to Favorites") {
@@ -283,23 +279,6 @@ struct NoteroApp: App {
         Settings {
             SettingsView(updater: updaterController.updater)
                 .environmentObject(appState)
-        }
-    }
-
-    private func changeVaultLocation() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.message = "Choose a folder for your notes vault"
-        panel.prompt = "Choose"
-
-        if panel.runModal() == .OK, let url = panel.url {
-            appState.vaultManager.changeVault(to: url)
-            Task {
-                await appState.searchService.buildIndex()
-            }
         }
     }
 

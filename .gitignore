@@ -5,3 +5,6 @@ xcuserdata/
 .DS_Store
 *.swp
 *.swo
+supabase/.env
+supabase/.temp/
+.playwright-mcp/

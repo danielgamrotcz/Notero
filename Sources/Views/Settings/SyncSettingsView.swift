@@ -89,7 +89,7 @@ struct SyncSettingsView: View {
                 .padding(.vertical, 4)
             }
 
-            Text("Supabase sync je volitelný — bez credentials funguje vše lokálně. Po uložení poznámky se automaticky synchronizuje na pozadí.")
+            Text("Supabase je hlavní úložiště poznámek. Credentials jsou povinné pro fungování aplikace.")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 4)
@@ -122,6 +122,7 @@ struct SyncSettingsView: View {
             hasConfig = true
             saveMessage = "Saved"
             saveMessageIsError = false
+            Task { await appState.performStartupSync() }
         } catch {
             saveMessage = error.localizedDescription
             saveMessageIsError = true

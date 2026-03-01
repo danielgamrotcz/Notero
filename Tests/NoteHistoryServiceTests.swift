@@ -14,13 +14,10 @@ final class NoteHistoryServiceTests: XCTestCase {
         noteURL = tempDir.appendingPathComponent("note.md")
         try? "Initial".write(to: noteURL, atomically: true, encoding: .utf8)
 
-        // Set vault path so history service can resolve it
-        UserDefaults.standard.set(tempDir.path, forKey: "vaultPath")
     }
 
     override func tearDown() {
         try? FileManager.default.removeItem(at: tempDir)
-        UserDefaults.standard.removeObject(forKey: "vaultPath")
         super.tearDown()
     }
 

@@ -11,7 +11,6 @@ final class SemanticSearchServiceTests: XCTestCase {
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: "semanticSearchEnabled")
-        UserDefaults.standard.removeObject(forKey: "vaultPath")
         super.tearDown()
     }
 

@@ -1,19 +1,70 @@
 import Foundation
 
+struct PendingSyncState: Codable {
+    var dirtyNotePaths: Set<String> = []
+    var dirtyFolderPaths: Set<String> = []
+    var favouritesDirty: Bool = false
+}
+
 actor SyncManager {
     private let supabaseService: SupabaseService
     private var recentlyPulledPaths: [String: Date] = [:]
     private var lastSyncTime: Date
     private var isSyncing = false
     private var pollTask: Task<Void, Never>?
+    private var pendingSync = PendingSyncState()
 
-    private static let pullGuardWindow: TimeInterval = 5
+    private static let pullGuardWindow: TimeInterval = 10
     private static let pollInterval: UInt64 = 30_000_000_000 // 30s
+    private static let pendingSyncURL: URL = {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return home.appendingPathComponent(".notero/pending-sync.json")
+    }()
 
     init(supabaseService: SupabaseService) {
         self.supabaseService = supabaseService
         let saved = UserDefaults.standard.double(forKey: "lastSupabaseSyncTime")
         self.lastSyncTime = saved > 0 ? Date(timeIntervalSince1970: saved) : .distantPast
+        self.pendingSync = Self.loadPendingSync()
+    }
+
+    // MARK: - Dirty State Management
+
+    func markNoteDirty(_ path: String) {
+        pendingSync.dirtyNotePaths.insert(path)
+        savePendingSync()
+        Log.sync.debug("Marked note dirty: \(path)")
+    }
+
+    func markFolderDirty(_ path: String) {
+        pendingSync.dirtyFolderPaths.insert(path)
+        savePendingSync()
+        Log.sync.debug("Marked folder dirty: \(path)")
+    }
+
+    func markFavouritesDirty() {
+        pendingSync.favouritesDirty = true
+        savePendingSync()
+        Log.sync.debug("Marked favourites dirty")
+    }
+
+    // MARK: - Startup Sync
+
+    func performStartupSync(config: SupabaseService.Config, vaultURL: URL) async -> [String]? {
+        guard !isSyncing else { return nil }
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            try await performInitialSync(config: config, vaultURL: vaultURL)
+            let favPaths = try await fetchRemoteFavourites(config: config)
+            lastSyncTime = Date()
+            UserDefaults.standard.set(lastSyncTime.timeIntervalSince1970, forKey: "lastSupabaseSyncTime")
+            return favPaths
+        } catch {
+            Log.sync.warning("Startup sync failed: \(error)")
+            return nil
+        }
     }
 
     // MARK: - Polling
@@ -21,6 +72,8 @@ actor SyncManager {
     func startPolling(
         configProvider: @Sendable @escaping () async -> SupabaseService.Config?,
         vaultURLProvider: @Sendable @escaping () async -> URL,
+        editingPathsProvider: @Sendable @escaping () async -> Set<String>,
+        favouritesProvider: @Sendable @escaping () async -> [String],
         onPullComplete: @Sendable @escaping ([String]?) async -> Void
     ) {
         stopPolling()
@@ -32,7 +85,12 @@ actor SyncManager {
 
                 guard let config = await configProvider() else { continue }
                 let vaultURL = await vaultURLProvider()
-                let favPaths = await self.performPullSync(config: config, vaultURL: vaultURL)
+                let editingPaths = await editingPathsProvider()
+                let favourites = await favouritesProvider()
+                let favPaths = await self.performPullSync(
+                    config: config, vaultURL: vaultURL,
+                    editingPaths: editingPaths, favourites: favourites
+                )
                 await onPullComplete(favPaths)
             }
         }
@@ -53,10 +111,18 @@ actor SyncManager {
 
     // MARK: - Pull Sync
 
-    private func performPullSync(config: SupabaseService.Config, vaultURL: URL) async -> [String]? {
+    private func performPullSync(
+        config: SupabaseService.Config,
+        vaultURL: URL,
+        editingPaths: Set<String>,
+        favourites: [String]
+    ) async -> [String]? {
         guard !isSyncing else { return nil }
         isSyncing = true
         defer { isSyncing = false }
+
+        // Retry dirty paths before pulling
+        await retryDirtyPaths(config: config, vaultURL: vaultURL, favourites: favourites)
 
         do {
             let favPaths: [String]?
@@ -64,7 +130,10 @@ actor SyncManager {
                 try await performInitialSync(config: config, vaultURL: vaultURL)
                 favPaths = try await fetchRemoteFavourites(config: config)
             } else {
-                try await performIncrementalSync(since: lastSyncTime, config: config, vaultURL: vaultURL)
+                try await performIncrementalSync(
+                    since: lastSyncTime, config: config,
+                    vaultURL: vaultURL, editingPaths: editingPaths
+                )
                 favPaths = try await fetchRemoteFavourites(config: config)
             }
             lastSyncTime = Date()
@@ -77,10 +146,67 @@ actor SyncManager {
         }
     }
 
+    // MARK: - Retry Dirty Paths
+
+    private func retryDirtyPaths(
+        config: SupabaseService.Config,
+        vaultURL: URL,
+        favourites: [String]
+    ) async {
+        guard !pendingSync.dirtyNotePaths.isEmpty
+            || !pendingSync.dirtyFolderPaths.isEmpty
+            || pendingSync.favouritesDirty else { return }
+
+        let noteCount = pendingSync.dirtyNotePaths.count
+        let folderCount = pendingSync.dirtyFolderPaths.count
+        let favsDirty = pendingSync.favouritesDirty
+        Log.sync.info("Retrying dirty paths: \(noteCount) notes, \(folderCount) folders, favs=\(favsDirty)")
+
+        // Retry dirty notes
+        for path in pendingSync.dirtyNotePaths {
+            let fileURL = vaultURL.appendingPathComponent(path + ".md")
+            let success: Bool
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                let content = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+                let title = SupabaseService.extractTitle(from: content, filename: fileURL.lastPathComponent)
+                success = await supabaseService.syncNote(path: path, title: title, content: content, config: config)
+            } else {
+                success = await supabaseService.deleteNote(path: path, config: config)
+            }
+            if success {
+                pendingSync.dirtyNotePaths.remove(path)
+            }
+        }
+
+        // Retry dirty folders
+        for path in pendingSync.dirtyFolderPaths {
+            let folderURL = vaultURL.appendingPathComponent(path)
+            let success: Bool
+            if FileManager.default.fileExists(atPath: folderURL.path) {
+                success = await supabaseService.syncFolder(path: path, parentPath: nil, config: config)
+            } else {
+                success = await supabaseService.deleteFolder(path: path, config: config)
+            }
+            if success {
+                pendingSync.dirtyFolderPaths.remove(path)
+            }
+        }
+
+        // Retry dirty favourites
+        if pendingSync.favouritesDirty {
+            let success = await supabaseService.syncFavourites(paths: favourites, config: config)
+            if success {
+                pendingSync.favouritesDirty = false
+            }
+        }
+
+        savePendingSync()
+    }
+
     // MARK: - Initial Sync
 
     private func performInitialSync(config: SupabaseService.Config, vaultURL: URL) async throws {
-        Log.sync.info("Performing initial sync")
+        Log.sync.info("Performing initial sync (Supabase-first)")
 
         let folders = try await supabaseService.fetchAllFolders(config: config)
         for folder in folders {
@@ -89,21 +215,38 @@ actor SyncManager {
         }
 
         let notes = try await supabaseService.fetchAllNotes(config: config)
+        var remotePaths = Set<String>()
         for note in notes {
             guard let path = note["path"] as? String,
                   let content = note["content"] as? String else { continue }
+            remotePaths.insert(path)
             let fileURL = vaultURL.appendingPathComponent(path + ".md")
-            // Initial sync: don't overwrite existing local files
-            guard !FileManager.default.fileExists(atPath: fileURL.path) else { continue }
             writeRemoteNote(content: content, to: fileURL, relativePath: path)
         }
 
-        Log.sync.info("Initial sync done: \(folders.count) folders, \(notes.count) notes")
+        // Push local-only files to Supabase
+        let localFiles = scanLocalMarkdownFiles(vaultURL: vaultURL)
+        for localFile in localFiles {
+            let relativePath = SupabaseService.relativePath(for: localFile, vaultURL: vaultURL)
+            if !remotePaths.contains(relativePath) {
+                let content = (try? String(contentsOf: localFile, encoding: .utf8)) ?? ""
+                let title = SupabaseService.extractTitle(from: content, filename: localFile.lastPathComponent)
+                await supabaseService.syncNote(path: relativePath, title: title, content: content, config: config)
+                Log.sync.debug("Pushed local-only note: \(relativePath)")
+            }
+        }
+
+        Log.sync.info("Initial sync done: \(folders.count) folders, \(notes.count) notes, pushed \(localFiles.count - remotePaths.count) local-only")
     }
 
     // MARK: - Incremental Sync
 
-    private func performIncrementalSync(since: Date, config: SupabaseService.Config, vaultURL: URL) async throws {
+    private func performIncrementalSync(
+        since: Date,
+        config: SupabaseService.Config,
+        vaultURL: URL,
+        editingPaths: Set<String>
+    ) async throws {
         let folders = try await supabaseService.fetchChangedFolders(since: since, config: config)
         for folder in folders {
             guard let path = folder["path"] as? String else { continue }
@@ -112,40 +255,51 @@ actor SyncManager {
 
         let notes = try await supabaseService.fetchChangedNotes(since: since, config: config)
         for note in notes {
-            processRemoteNote(note, vaultURL: vaultURL)
+            processRemoteNote(note, vaultURL: vaultURL, editingPaths: editingPaths)
         }
 
-        if !folders.isEmpty || !notes.isEmpty {
-            Log.sync.info("Incremental sync: \(folders.count) folders, \(notes.count) notes")
+        // Process tombstones — delete local files for remotely deleted items
+        let noteDeletions = try await supabaseService.fetchNoteDeletions(since: since, config: config)
+        for deletion in noteDeletions {
+            guard let path = deletion["path"] as? String else { continue }
+            if editingPaths.contains(path) { continue }
+            let fileURL = vaultURL.appendingPathComponent(path + ".md")
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                try? FileManager.default.removeItem(at: fileURL)
+                Log.sync.info("Deleted local note from tombstone: \(path)")
+            }
+        }
+
+        let folderDeletions = try await supabaseService.fetchFolderDeletions(since: since, config: config)
+        // Sort by depth descending so we delete deepest folders first
+        let sortedDeletions = folderDeletions
+            .compactMap { $0["path"] as? String }
+            .sorted { $0.components(separatedBy: "/").count > $1.components(separatedBy: "/").count }
+        for path in sortedDeletions {
+            let folderURL = vaultURL.appendingPathComponent(path)
+            if FileManager.default.fileExists(atPath: folderURL.path) {
+                try? FileManager.default.removeItem(at: folderURL)
+                Log.sync.info("Deleted local folder from tombstone: \(path)")
+            }
+        }
+
+        let totalChanges = folders.count + notes.count + noteDeletions.count + folderDeletions.count
+        if totalChanges > 0 {
+            Log.sync.info("Incremental sync: \(folders.count) folders, \(notes.count) notes, \(noteDeletions.count) note deletions, \(folderDeletions.count) folder deletions")
         }
     }
 
     // MARK: - Note Processing
 
-    private func processRemoteNote(_ note: [String: Any], vaultURL: URL) {
+    private func processRemoteNote(_ note: [String: Any], vaultURL: URL, editingPaths: Set<String>) {
         guard let path = note["path"] as? String,
-              let content = note["content"] as? String,
-              let updatedAtStr = note["updated_at"] as? String else { return }
-
+              let content = note["content"] as? String else { return }
+        if editingPaths.contains(path) {
+            Log.sync.debug("Skipped pull for editing note: \(path)")
+            return
+        }
         let fileURL = vaultURL.appendingPathComponent(path + ".md")
-
-        guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            writeRemoteNote(content: content, to: fileURL, relativePath: path)
-            return
-        }
-
-        // Conflict resolution: compare remote updated_at vs local mtime
-        guard let remoteDate = ISO8601DateFormatter().date(from: updatedAtStr) else { return }
-        guard let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
-              let localMtime = attrs[.modificationDate] as? Date else {
-            writeRemoteNote(content: content, to: fileURL, relativePath: path)
-            return
-        }
-
-        if remoteDate > localMtime {
-            writeRemoteNote(content: content, to: fileURL, relativePath: path)
-        }
-        // Local newer → skip, will be pushed by normal flow
+        writeRemoteNote(content: content, to: fileURL, relativePath: path)
     }
 
     // MARK: - File Operations
@@ -179,6 +333,47 @@ actor SyncManager {
             paths.append(notePath + ".md")
         }
         return paths.isEmpty ? nil : paths
+    }
+
+    // MARK: - Local Scan
+
+    private func scanLocalMarkdownFiles(vaultURL: URL) -> [URL] {
+        var result: [URL] = []
+        collectMarkdownFiles(at: vaultURL, into: &result)
+        return result
+    }
+
+    private func collectMarkdownFiles(at url: URL, into result: inout [URL]) {
+        guard let contents = try? FileManager.default.contentsOfDirectory(
+            at: url, includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return }
+
+        for itemURL in contents {
+            let isDir = (try? itemURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            if isDir {
+                collectMarkdownFiles(at: itemURL, into: &result)
+            } else if itemURL.pathExtension == "md" {
+                result.append(itemURL)
+            }
+        }
+    }
+
+    // MARK: - Pending Sync Persistence
+
+    private static func loadPendingSync() -> PendingSyncState {
+        guard let data = try? Data(contentsOf: pendingSyncURL),
+              let state = try? JSONDecoder().decode(PendingSyncState.self, from: data) else {
+            return PendingSyncState()
+        }
+        return state
+    }
+
+    private func savePendingSync() {
+        guard let data = try? JSONEncoder().encode(pendingSync) else { return }
+        let dir = Self.pendingSyncURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? data.write(to: Self.pendingSyncURL, options: .atomic)
     }
 
     // MARK: - Cleanup

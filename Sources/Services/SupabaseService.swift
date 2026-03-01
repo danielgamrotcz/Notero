@@ -180,6 +180,20 @@ actor SupabaseService {
         return try await request(method: "GET", table: "favourites", params: qs, config: config)
     }
 
+    func fetchNoteDeletions(since: Date, config: Config) async throws -> [[String: Any]] {
+        let ts = Self.iso8601Formatter.string(from: since)
+        let encoded = ts.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ts
+        let qs = "?user_id=eq.\(config.userId)&deleted_at=gt.\(encoded)&select=path,deleted_at"
+        return try await request(method: "GET", table: "note_deletions", params: qs, config: config)
+    }
+
+    func fetchFolderDeletions(since: Date, config: Config) async throws -> [[String: Any]] {
+        let ts = Self.iso8601Formatter.string(from: since)
+        let encoded = ts.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ts
+        let qs = "?user_id=eq.\(config.userId)&deleted_at=gt.\(encoded)&select=path,deleted_at"
+        return try await request(method: "GET", table: "folder_deletions", params: qs, config: config)
+    }
+
     // MARK: - Helpers
 
     static func relativePath(for url: URL, vaultURL: URL) -> String {

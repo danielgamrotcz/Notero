@@ -1,6 +1,13 @@
 import SwiftUI
 import Combine
 
+enum SyncState {
+    case needsSetup
+    case syncing
+    case ready
+    case error(String)
+}
+
 @MainActor
 final class AppState: ObservableObject {
     // Services
@@ -17,6 +24,9 @@ final class AppState: ObservableObject {
 
     // Per-window NoteState registry
     private var noteStates = NSHashTable<NoteState>.weakObjects()
+
+    // Sync State
+    @Published var syncState: SyncState = .needsSetup
 
     // UI State
     @Published var sidebarVisibility: NavigationSplitViewVisibility = .automatic
@@ -129,10 +139,27 @@ final class AppState: ObservableObject {
             }
         }
 
-        Task {
-            await searchService.buildIndex()
+        if supabaseConfig != nil {
+            syncState = .syncing
+            Task { await performStartupSync() }
+        } else {
+            syncState = .needsSetup
         }
+    }
 
+    func performStartupSync() async {
+        guard let config = supabaseConfig else {
+            syncState = .needsSetup
+            return
+        }
+        syncState = .syncing
+        let vaultURL = vaultManager.vaultURL
+        let favPaths = await syncManager.performStartupSync(config: config, vaultURL: vaultURL)
+
+        vaultManager.loadFileTree(sortOrder: sortOrder)
+        await searchService.buildIndex()
+        if let favPaths { favoritesManager.replaceFromRemote(favPaths) }
+        syncState = .ready
         startSyncPolling()
     }
 
@@ -295,7 +322,8 @@ extension AppState {
                 }
                 let path = SupabaseService.relativePath(for: url, vaultURL: vaultURL)
                 let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
-                await supabase.syncNote(path: path, title: title, content: content, config: config)
+                let success = await supabase.syncNote(path: path, title: title, content: content, config: config)
+                if !success { await sync.markNoteDirty(path) }
             }
         }
 
@@ -311,7 +339,8 @@ extension AppState {
                 }
                 let path = SupabaseService.relativePath(for: url, vaultURL: vaultURL)
                 let title = SupabaseService.extractTitle(from: content, filename: url.lastPathComponent)
-                await supabase.syncNote(path: path, title: title, content: content, config: config)
+                let success = await supabase.syncNote(path: path, title: title, content: content, config: config)
+                if !success { await sync.markNoteDirty(path) }
             }
         }
 
@@ -323,13 +352,21 @@ extension AppState {
                 let oldPath = SupabaseService.relativePath(for: oldURL, vaultURL: vault.vaultURL)
                 let newPath = SupabaseService.relativePath(for: newURL, vaultURL: vault.vaultURL)
                 Task.detached {
-                    await supabase.deleteFolder(path: oldPath, config: config)
-                    await supabase.syncFolder(path: newPath, parentPath: nil, config: config)
+                    let delOk = await supabase.deleteFolder(path: oldPath, config: config)
+                    if !delOk { await sync.markFolderDirty(oldPath) }
+                    let syncOk = await supabase.syncFolder(path: newPath, parentPath: nil, config: config)
+                    if !syncOk { await sync.markFolderDirty(newPath) }
                 }
             } else {
                 let oldPath = SupabaseService.relativePath(for: oldURL, vaultURL: vault.vaultURL)
                 let newPath = SupabaseService.relativePath(for: newURL, vaultURL: vault.vaultURL)
-                Task.detached { await supabase.renameNote(oldPath: oldPath, newPath: newPath, config: config) }
+                Task.detached {
+                    let success = await supabase.renameNote(oldPath: oldPath, newPath: newPath, config: config)
+                    if !success {
+                        await sync.markNoteDirty(oldPath)
+                        await sync.markNoteDirty(newPath)
+                    }
+                }
             }
         }
 
@@ -341,13 +378,21 @@ extension AppState {
                 let oldPath = SupabaseService.relativePath(for: oldURL, vaultURL: vault.vaultURL)
                 let newPath = SupabaseService.relativePath(for: newURL, vaultURL: vault.vaultURL)
                 Task.detached {
-                    await supabase.deleteFolder(path: oldPath, config: config)
-                    await supabase.syncFolder(path: newPath, parentPath: nil, config: config)
+                    let delOk = await supabase.deleteFolder(path: oldPath, config: config)
+                    if !delOk { await sync.markFolderDirty(oldPath) }
+                    let syncOk = await supabase.syncFolder(path: newPath, parentPath: nil, config: config)
+                    if !syncOk { await sync.markFolderDirty(newPath) }
                 }
             } else {
                 let oldPath = SupabaseService.relativePath(for: oldURL, vaultURL: vault.vaultURL)
                 let newPath = SupabaseService.relativePath(for: newURL, vaultURL: vault.vaultURL)
-                Task.detached { await supabase.renameNote(oldPath: oldPath, newPath: newPath, config: config) }
+                Task.detached {
+                    let success = await supabase.renameNote(oldPath: oldPath, newPath: newPath, config: config)
+                    if !success {
+                        await sync.markNoteDirty(oldPath)
+                        await sync.markNoteDirty(newPath)
+                    }
+                }
             }
         }
 
@@ -357,9 +402,15 @@ extension AppState {
             let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
             let path = SupabaseService.relativePath(for: url, vaultURL: vault.vaultURL)
             if isDir {
-                Task.detached { await supabase.deleteFolder(path: path, config: config) }
+                Task.detached {
+                    let success = await supabase.deleteFolder(path: path, config: config)
+                    if !success { await sync.markFolderDirty(path) }
+                }
             } else {
-                Task.detached { await supabase.deleteNote(path: path, config: config) }
+                Task.detached {
+                    let success = await supabase.deleteNote(path: path, config: config)
+                    if !success { await sync.markNoteDirty(path) }
+                }
             }
         }
 
@@ -367,13 +418,19 @@ extension AppState {
         vault.onFolderCreated = { [weak self] url in
             guard let self, let config = self.supabaseConfig else { return }
             let path = SupabaseService.relativePath(for: url, vaultURL: vault.vaultURL)
-            Task.detached { await supabase.syncFolder(path: path, parentPath: nil, config: config) }
+            Task.detached {
+                let success = await supabase.syncFolder(path: path, parentPath: nil, config: config)
+                if !success { await sync.markFolderDirty(path) }
+            }
         }
 
         // Favourites changed
         favs.onFavouritesChanged = { [weak self] paths in
             guard let self, let config = self.supabaseConfig else { return }
-            Task.detached { await supabase.syncFavourites(paths: paths, config: config) }
+            Task.detached {
+                let success = await supabase.syncFavourites(paths: paths, config: config)
+                if !success { await sync.markFavouritesDirty() }
+            }
         }
     }
 
@@ -390,6 +447,23 @@ extension AppState {
                 },
                 vaultURLProvider: { [weak self] in
                     await MainActor.run { self?.vaultManager.vaultURL ?? URL(fileURLWithPath: NSHomeDirectory()) }
+                },
+                editingPathsProvider: { [weak self] in
+                    await MainActor.run {
+                        guard let self else { return Set<String>() }
+                        let vaultURL = self.vaultManager.vaultURL
+                        var paths = Set<String>()
+                        for noteState in noteStatesTable.allObjects {
+                            guard noteState.isEditing, let url = noteState.selectedNoteURL else { continue }
+                            paths.insert(SupabaseService.relativePath(for: url, vaultURL: vaultURL))
+                        }
+                        return paths
+                    }
+                },
+                favouritesProvider: { [weak self] in
+                    await MainActor.run {
+                        self?.favoritesManager.orderedFavorites ?? []
+                    }
                 },
                 onPullComplete: { [weak self] favPaths in
                     await MainActor.run {
