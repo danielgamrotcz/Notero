@@ -198,10 +198,11 @@ actor SupabaseService {
 
     static func relativePath(for url: URL, vaultURL: URL) -> String {
         let path = url.path.replacingOccurrences(of: vaultURL.path + "/", with: "")
-        if path.hasSuffix(".md") {
-            return String(path.dropLast(3))
+        let normalized = path.precomposedStringWithCanonicalMapping // NFD → NFC
+        if normalized.hasSuffix(".md") {
+            return String(normalized.dropLast(3))
         }
-        return path
+        return normalized
     }
 
     static func extractTitle(from content: String?, filename: String) -> String {
