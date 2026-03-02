@@ -4,10 +4,23 @@ struct PendingSyncState: Codable {
     var dirtyNotePaths: Set<String> = []
     var dirtyFolderPaths: Set<String> = []
     var favouritesDirty: Bool = false
+    var pendingDeletionPaths: Set<String> = []
+    var pendingFolderDeletionPaths: Set<String> = []
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        dirtyNotePaths = (try? container.decode(Set<String>.self, forKey: .dirtyNotePaths)) ?? []
+        dirtyFolderPaths = (try? container.decode(Set<String>.self, forKey: .dirtyFolderPaths)) ?? []
+        favouritesDirty = (try? container.decode(Bool.self, forKey: .favouritesDirty)) ?? false
+        pendingDeletionPaths = (try? container.decode(Set<String>.self, forKey: .pendingDeletionPaths)) ?? []
+        pendingFolderDeletionPaths = (try? container.decode(Set<String>.self, forKey: .pendingFolderDeletionPaths)) ?? []
+    }
 }
 
 actor SyncManager {
-    private let supabaseService: SupabaseService
+    private let supabaseService: any SupabaseServiceProtocol
     private var recentlyPulledPaths: [String: Date] = [:]
     private var lastSyncTime: Date
     private var isSyncing = false
@@ -21,16 +34,24 @@ actor SyncManager {
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
-    private static let pendingSyncURL: URL = {
+    static let defaultPendingSyncURL: URL = {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home.appendingPathComponent(".notero/pending-sync.json")
     }()
+    let pendingSyncURL: URL
+    private let lastSyncTimeKey: String
 
-    init(supabaseService: SupabaseService) {
+    init(
+        supabaseService: any SupabaseServiceProtocol,
+        pendingSyncURL: URL? = nil,
+        lastSyncTimeKey: String = "lastSupabaseSyncTime"
+    ) {
         self.supabaseService = supabaseService
-        let saved = UserDefaults.standard.double(forKey: "lastSupabaseSyncTime")
+        self.lastSyncTimeKey = lastSyncTimeKey
+        self.pendingSyncURL = pendingSyncURL ?? Self.defaultPendingSyncURL
+        let saved = UserDefaults.standard.double(forKey: lastSyncTimeKey)
         self.lastSyncTime = saved > 0 ? Date(timeIntervalSince1970: saved) : .distantPast
-        self.pendingSync = Self.loadPendingSync()
+        self.pendingSync = Self.loadPendingSync(from: self.pendingSyncURL)
     }
 
     // MARK: - Dirty State Management
@@ -53,6 +74,28 @@ actor SyncManager {
         Log.sync.debug("Marked favourites dirty")
     }
 
+    func markLocallyDeleted(_ path: String) {
+        pendingSync.pendingDeletionPaths.insert(path)
+        savePendingSync()
+        Log.sync.debug("Marked note locally deleted: \(path)")
+    }
+
+    func markFolderLocallyDeleted(_ path: String) {
+        pendingSync.pendingFolderDeletionPaths.insert(path)
+        savePendingSync()
+        Log.sync.debug("Marked folder locally deleted: \(path)")
+    }
+
+    func clearLocallyDeleted(_ path: String) {
+        pendingSync.pendingDeletionPaths.remove(path)
+        savePendingSync()
+    }
+
+    func clearFolderLocallyDeleted(_ path: String) {
+        pendingSync.pendingFolderDeletionPaths.remove(path)
+        savePendingSync()
+    }
+
     // MARK: - Startup Sync
 
     func performStartupSync(config: SupabaseService.Config, vaultURL: URL) async -> [String]? {
@@ -64,7 +107,7 @@ actor SyncManager {
             try await performInitialSync(config: config, vaultURL: vaultURL)
             let favPaths = try await fetchRemoteFavourites(config: config)
             lastSyncTime = Date()
-            UserDefaults.standard.set(lastSyncTime.timeIntervalSince1970, forKey: "lastSupabaseSyncTime")
+            UserDefaults.standard.set(lastSyncTime.timeIntervalSince1970, forKey: lastSyncTimeKey)
             return favPaths
         } catch {
             Log.sync.warning("Startup sync failed: \(error)")
@@ -142,7 +185,7 @@ actor SyncManager {
                 favPaths = try await fetchRemoteFavourites(config: config)
             }
             lastSyncTime = Date()
-            UserDefaults.standard.set(lastSyncTime.timeIntervalSince1970, forKey: "lastSupabaseSyncTime")
+            UserDefaults.standard.set(lastSyncTime.timeIntervalSince1970, forKey: lastSyncTimeKey)
             cleanupExpiredGuards()
             return favPaths
         } catch {
@@ -181,6 +224,7 @@ actor SyncManager {
             }
             if success {
                 pendingSync.dirtyNotePaths.remove(path)
+                pendingSync.pendingDeletionPaths.remove(path)
             }
         }
 
@@ -195,6 +239,7 @@ actor SyncManager {
             }
             if success {
                 pendingSync.dirtyFolderPaths.remove(path)
+                pendingSync.pendingFolderDeletionPaths.remove(path)
             }
         }
 
@@ -217,6 +262,14 @@ actor SyncManager {
         let folders = try await supabaseService.fetchAllFolders(config: config)
         for folder in folders {
             guard let path = folder["path"] as? String else { continue }
+            if pendingSync.pendingFolderDeletionPaths.contains(path) {
+                let ok = await supabaseService.deleteFolder(path: path, config: config)
+                if ok {
+                    pendingSync.pendingFolderDeletionPaths.remove(path)
+                    Log.sync.info("Completed pending folder deletion from Supabase: \(path)")
+                }
+                continue
+            }
             ensureLocalFolder(path: path, vaultURL: vaultURL)
         }
 
@@ -226,6 +279,17 @@ actor SyncManager {
             guard let path = note["path"] as? String,
                   let content = note["content"] as? String else { continue }
             remotePaths.insert(path)
+
+            // If locally deleted, complete the deletion from Supabase instead of restoring
+            if pendingSync.pendingDeletionPaths.contains(path) {
+                let ok = await supabaseService.deleteNote(path: path, config: config)
+                if ok {
+                    pendingSync.pendingDeletionPaths.remove(path)
+                    Log.sync.info("Completed pending deletion from Supabase: \(path)")
+                }
+                continue
+            }
+
             let fileURL = vaultURL.appendingPathComponent(path + ".md")
             guard shouldWriteRemote(note: note, to: fileURL) else {
                 Log.sync.debug("Skipped initial sync write (local newer): \(path)")
@@ -247,6 +311,7 @@ actor SyncManager {
             }
         }
 
+        savePendingSync()
         Log.sync.info("Initial sync done: \(folders.count) folders, \(notes.count) notes, pushed \(localFiles.count - remotePaths.count) local-only")
     }
 
@@ -408,8 +473,8 @@ actor SyncManager {
 
     // MARK: - Pending Sync Persistence
 
-    private static func loadPendingSync() -> PendingSyncState {
-        guard let data = try? Data(contentsOf: pendingSyncURL),
+    private static func loadPendingSync(from url: URL) -> PendingSyncState {
+        guard let data = try? Data(contentsOf: url),
               let state = try? JSONDecoder().decode(PendingSyncState.self, from: data) else {
             return PendingSyncState()
         }
@@ -418,9 +483,9 @@ actor SyncManager {
 
     private func savePendingSync() {
         guard let data = try? JSONEncoder().encode(pendingSync) else { return }
-        let dir = Self.pendingSyncURL.deletingLastPathComponent()
+        let dir = pendingSyncURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try? data.write(to: Self.pendingSyncURL, options: .atomic)
+        try? data.write(to: pendingSyncURL, options: .atomic)
     }
 
     // MARK: - Cleanup
@@ -430,5 +495,35 @@ actor SyncManager {
         recentlyPulledPaths = recentlyPulledPaths.filter { _, date in
             now.timeIntervalSince(date) < Self.pullGuardWindow
         }
+    }
+
+    // MARK: - Testing Hooks
+
+    func triggerPull(
+        config: SupabaseService.Config,
+        vaultURL: URL,
+        editingPaths: Set<String> = [],
+        favourites: [String] = []
+    ) async -> [String]? {
+        return await performPullSync(
+            config: config, vaultURL: vaultURL,
+            editingPaths: editingPaths, favourites: favourites
+        )
+    }
+
+    func testingGetPendingSync() -> PendingSyncState {
+        return pendingSync
+    }
+
+    func testingSetLastSyncTime(_ date: Date) {
+        lastSyncTime = date
+    }
+
+    func testingGetRecentlyPulledPaths() -> [String: Date] {
+        return recentlyPulledPaths
+    }
+
+    func testingResetIsSyncing() {
+        isSyncing = false
     }
 }

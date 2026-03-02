@@ -38,38 +38,20 @@ enum KeychainManager {
     }
 
     static func load(key: String) -> String? {
-        // Try Keychain first
+        // Single query without kSecAttrAccessible — it's unnecessary for reads
+        // and adding it caused duplicate queries for legacy items
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
             kSecReturnData as String: kCFBooleanTrue!,
             kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
         ]
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         if status == errSecSuccess, let data = result as? Data,
-           let value = String(data: data, encoding: .utf8),
-           !value.isEmpty {
-            return value
-        }
-
-        // Also try without accessibility attribute (for items saved before this fix)
-        let legacyQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: kCFBooleanTrue!,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-
-        var legacyResult: AnyObject?
-        let legacyStatus = SecItemCopyMatching(legacyQuery as CFDictionary, &legacyResult)
-
-        if legacyStatus == errSecSuccess, let data = legacyResult as? Data,
            let value = String(data: data, encoding: .utf8),
            !value.isEmpty {
             return value
@@ -83,7 +65,7 @@ enum KeychainManager {
             return value
         }
 
-        Log.general.warning("Keychain load failed for \(key): status=\(status), legacyStatus=\(legacyStatus)")
+        Log.general.warning("Keychain load failed for \(key): status=\(status)")
         return nil
     }
 

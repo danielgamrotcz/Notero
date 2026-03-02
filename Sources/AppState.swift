@@ -155,9 +155,32 @@ final class AppState: ObservableObject {
     }
 
     private func flushPendingSaves() {
-        for noteState in noteStates.allObjects {
-            guard let url = noteState.selectedNoteURL else { continue }
-            autoSaveService.saveImmediately(content: noteState.currentContent, to: url)
+        autoSaveService.flushIfNeeded()
+    }
+
+    /// Synchronously writes a pending deletion to disk so it survives app termination.
+    /// Must be called on main thread BEFORE `trashItem` executes.
+    private static func synchronouslyRecordPendingDeletion(path: String, isFolder: Bool) {
+        let url = SyncManager.defaultPendingSyncURL
+        let dir = url.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        var state: PendingSyncState
+        if let data = try? Data(contentsOf: url),
+           let decoded = try? JSONDecoder().decode(PendingSyncState.self, from: data) {
+            state = decoded
+        } else {
+            state = PendingSyncState()
+        }
+
+        if isFolder {
+            state.pendingFolderDeletionPaths.insert(path)
+        } else {
+            state.pendingDeletionPaths.insert(path)
+        }
+
+        if let data = try? JSONEncoder().encode(state) {
+            try? data.write(to: url, options: .atomic)
         }
     }
 
@@ -308,7 +331,18 @@ final class AppState: ObservableObject {
 // MARK: - Supabase Sync
 
 extension AppState {
+    private static var _cachedSupabaseConfig: SupabaseService.Config??
+
     var supabaseConfig: SupabaseService.Config? {
+        if let cached = Self._cachedSupabaseConfig {
+            return cached
+        }
+        let config = Self.loadSupabaseConfig()
+        Self._cachedSupabaseConfig = .some(config)
+        return config
+    }
+
+    private static func loadSupabaseConfig() -> SupabaseService.Config? {
         guard let url = KeychainManager.load(key: "NoteroSupabaseURL"),
               let key = KeychainManager.load(key: "NoteroSupabaseKey"),
               let uid = KeychainManager.load(key: "NoteroSupabaseUserID") else {
@@ -316,6 +350,10 @@ extension AppState {
         }
         let config = SupabaseService.Config(url: url, serviceKey: key, userId: uid)
         return config.isValid ? config : nil
+    }
+
+    func invalidateSupabaseConfigCache() {
+        Self._cachedSupabaseConfig = nil
     }
 
     func setupSupabaseCallbacks() {
@@ -431,7 +469,14 @@ extension AppState {
             }
         }
 
-        // Item deleted
+        // Record pending deletion synchronously BEFORE trashItem
+        vault.onWillDeleteItem = { url in
+            let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            let path = SupabaseService.relativePath(for: url, vaultURL: vault.vaultURL)
+            Self.synchronouslyRecordPendingDeletion(path: path, isFolder: isDir)
+        }
+
+        // Item deleted — called AFTER successful trashItem
         vault.onItemDeleted = { [weak self] url in
             guard let self, let config = self.supabaseConfig else { return }
             let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
@@ -439,12 +484,20 @@ extension AppState {
             if isDir {
                 Task.detached {
                     let success = await supabase.deleteFolder(path: path, config: config)
-                    if !success { await sync.markFolderDirty(path) }
+                    if success {
+                        await sync.clearFolderLocallyDeleted(path)
+                    } else {
+                        await sync.markFolderDirty(path)
+                    }
                 }
             } else {
                 Task.detached {
                     let success = await supabase.deleteNote(path: path, config: config)
-                    if !success { await sync.markNoteDirty(path) }
+                    if success {
+                        await sync.clearLocallyDeleted(path)
+                    } else {
+                        await sync.markNoteDirty(path)
+                    }
                 }
             }
         }
@@ -507,7 +560,11 @@ extension AppState {
                         Task { await search.buildIndex() }
 
                         if let favPaths {
-                            favs.replaceFromRemote(favPaths)
+                            // Skip remote overwrite if favourites were changed locally within last 30s
+                            let recentlyChanged = favs.lastLocalChange.map { Date().timeIntervalSince($0) < 30 } ?? false
+                            if !recentlyChanged {
+                                favs.replaceFromRemote(favPaths)
+                            }
                         }
 
                         // Refresh open editors if their file was updated

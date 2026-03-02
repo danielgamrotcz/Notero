@@ -14,6 +14,7 @@ final class VaultManager: ObservableObject {
     var onNoteCreated: ((URL) -> Void)?
     var onItemRenamed: ((URL, URL) -> Void)?
     var onItemMoved: ((URL, URL) -> Void)?
+    var onWillDeleteItem: ((URL) -> Void)?
     var onItemDeleted: ((URL) -> Void)?
     var onFolderCreated: ((URL) -> Void)?
 
@@ -174,10 +175,11 @@ final class VaultManager: ObservableObject {
     }
 
     func moveToTrash(url: URL) {
-        onItemDeleted?(url)
+        onWillDeleteItem?(url)
         do {
             try fileManager.trashItem(at: url, resultingItemURL: nil)
             loadFileTree()
+            onItemDeleted?(url)
         } catch {
             Log.vault.error("Trash failed: \(error.localizedDescription)")
         }

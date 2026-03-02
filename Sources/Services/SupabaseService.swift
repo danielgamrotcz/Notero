@@ -1,6 +1,6 @@
 import Foundation
 
-actor SupabaseService {
+actor SupabaseService: SupabaseServiceProtocol {
     struct Config {
         let url: String
         let serviceKey: String

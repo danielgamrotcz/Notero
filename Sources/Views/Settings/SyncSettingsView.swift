@@ -122,6 +122,7 @@ struct SyncSettingsView: View {
             hasConfig = true
             saveMessage = "Saved"
             saveMessageIsError = false
+            appState.invalidateSupabaseConfigCache()
             Task { await appState.performStartupSync() }
         } catch {
             saveMessage = error.localizedDescription
@@ -139,6 +140,7 @@ struct SyncSettingsView: View {
         hasConfig = false
         saveMessage = "Config removed"
         saveMessageIsError = false
+        appState.invalidateSupabaseConfigCache()
     }
 
     private func testConnection() {

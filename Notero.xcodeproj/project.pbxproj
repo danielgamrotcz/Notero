@@ -72,6 +72,12 @@
 		FA0C6EDA1E91D1C0A4103565 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4CBB351BA5DA3AB8059C6CA /* Assets.xcassets */; };
 		FF23795F06D150AAC136951C /* GraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC24CD54CEAC1F21F6CA8363 /* GraphView.swift */; };
 		FF661E5FAE2978626CC958DF /* github-dark.min.css in Resources */ = {isa = PBXBuildFile; fileRef = A982F3DF7D96C5D0E0A0E554 /* github-dark.min.css */; };
+		BB0000000000000000000004 /* SupabaseServiceProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000014 /* SupabaseServiceProtocol.swift */; };
+		BB0000000000000000000005 /* MockSupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000015 /* MockSupabaseService.swift */; };
+		BB0000000000000000000006 /* SyncManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000016 /* SyncManagerTests.swift */; };
+		BB0000000000000000000007 /* DirtyStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000017 /* DirtyStateTests.swift */; };
+		BB0000000000000000000008 /* FavoritesSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000018 /* FavoritesSyncTests.swift */; };
+		BB0000000000000000000009 /* SyncEdgeCaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000019 /* SyncEdgeCaseTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -173,6 +179,12 @@
 		F4CBB351BA5DA3AB8059C6CA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FBF7AA11228F4E7A580836CF /* MarkdownEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownEditorView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* WikiLinkCompletionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiLinkCompletionPanel.swift; sourceTree = "<group>"; };
+		BB0000000000000000000014 /* SupabaseServiceProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseServiceProtocol.swift; sourceTree = "<group>"; };
+		BB0000000000000000000015 /* MockSupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockSupabaseService.swift; sourceTree = "<group>"; };
+		BB0000000000000000000016 /* SyncManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncManagerTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000017 /* DirtyStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirtyStateTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000018 /* FavoritesSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesSyncTests.swift; sourceTree = "<group>"; };
+		BB0000000000000000000019 /* SyncEdgeCaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEdgeCaseTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -209,8 +221,21 @@
 				AA46BD002FC9228F70CD2F3C /* SearchServiceTests.swift */,
 				20CDA02FDF06063697D26DCE /* SemanticSearchServiceTests.swift */,
 				9B8AEC69E0A906FEB369E65F /* VaultManagerTests.swift */,
+				BB00000000000000000000A0 /* Sync */,
 			);
 			path = Tests;
+			sourceTree = "<group>";
+		};
+		BB00000000000000000000A0 /* Sync */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000000000000000000015 /* MockSupabaseService.swift */,
+				BB0000000000000000000016 /* SyncManagerTests.swift */,
+				BB0000000000000000000017 /* DirtyStateTests.swift */,
+				BB0000000000000000000018 /* FavoritesSyncTests.swift */,
+				BB0000000000000000000019 /* SyncEdgeCaseTests.swift */,
+			);
+			path = Sync;
 			sourceTree = "<group>";
 		};
 		14C08CE0C961220041C955C8 /* Sidebar */ = {
@@ -355,6 +380,7 @@
 				DBB443D91BBB58E90F2EAD6E /* SearchService.swift */,
 				A1A6FAAADC44F5E16E5882DA /* SemanticSearchService.swift */,
 				AA0000000000000000000011 /* SupabaseService.swift */,
+				BB0000000000000000000014 /* SupabaseServiceProtocol.swift */,
 				AA0000000000000000000013 /* SyncManager.swift */,
 				547BC7E921F9FE97D5E1FDFB /* VaultManager.swift */,
 			);
@@ -502,6 +528,11 @@
 				BD5CF2C7A2001F4D5D33CF2A /* SearchServiceTests.swift in Sources */,
 				402221443EFF8D6BD6A4226C /* SemanticSearchServiceTests.swift in Sources */,
 				45FB066A04B124E9FCA3C616 /* VaultManagerTests.swift in Sources */,
+				BB0000000000000000000005 /* MockSupabaseService.swift in Sources */,
+				BB0000000000000000000006 /* SyncManagerTests.swift in Sources */,
+				BB0000000000000000000007 /* DirtyStateTests.swift in Sources */,
+				BB0000000000000000000008 /* FavoritesSyncTests.swift in Sources */,
+				BB0000000000000000000009 /* SyncEdgeCaseTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -515,6 +546,7 @@
 				AA0000000000000000000001 /* SupabaseService.swift in Sources */,
 				AA0000000000000000000002 /* SyncSettingsView.swift in Sources */,
 				AA0000000000000000000003 /* SyncManager.swift in Sources */,
+				BB0000000000000000000004 /* SupabaseServiceProtocol.swift in Sources */,
 				69DC7D71E26A0EB1C488172B /* AutoSaveService.swift in Sources */,
 				011BBDF235F57B7CB3337596 /* Color+Theme.swift in Sources */,
 				C550845B3AF72DDB35D9A8CF /* CommandItem.swift in Sources */,
