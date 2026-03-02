@@ -35,6 +35,7 @@ actor SupabaseService: SupabaseServiceProtocol {
             if let createdAt { body["created_at"] = Self.iso8601Formatter.string(from: createdAt) }
 
             _ = try await request(method: "POST", table: "notes", data: body,
+                                  params: "?on_conflict=user_id,path",
                                   extraHeaders: ["Prefer": "resolution=merge-duplicates"], config: config)
             return true
         } catch {
@@ -213,6 +214,43 @@ actor SupabaseService: SupabaseServiceProtocol {
         let encoded = ts.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ts
         let qs = "?user_id=eq.\(config.userId)&deleted_at=gt.\(encoded)&select=path,deleted_at"
         return try await request(method: "GET", table: "folder_deletions", params: qs, config: config)
+    }
+
+    // MARK: - NFC Migration
+
+    func migratePathsToNFC(config: Config) async {
+        guard config.isValid else { return }
+        Log.sync.info("Starting NFC path migration")
+        var migratedNotes = 0
+        var migratedFolders = 0
+
+        // Migrate note paths
+        let notes = (try? await request(method: "GET", table: "notes",
+            params: "?user_id=eq.\(config.userId)&select=path", config: config)) ?? []
+        for note in notes {
+            guard let path = note["path"] as? String else { continue }
+            let nfc = path.precomposedStringWithCanonicalMapping
+            guard nfc != path else { continue }
+            let encoded = path.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? path
+            let qs = "?user_id=eq.\(config.userId)&path=eq.\(encoded)"
+            _ = try? await request(method: "PATCH", table: "notes", data: ["path": nfc], params: qs, config: config)
+            migratedNotes += 1
+        }
+
+        // Migrate folder paths
+        let folders = (try? await request(method: "GET", table: "folders",
+            params: "?user_id=eq.\(config.userId)&select=path", config: config)) ?? []
+        for folder in folders {
+            guard let path = folder["path"] as? String else { continue }
+            let nfc = path.precomposedStringWithCanonicalMapping
+            guard nfc != path else { continue }
+            let encoded = path.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? path
+            let qs = "?user_id=eq.\(config.userId)&path=eq.\(encoded)"
+            _ = try? await request(method: "PATCH", table: "folders", data: ["path": nfc], params: qs, config: config)
+            migratedFolders += 1
+        }
+
+        Log.sync.info("NFC migration done: \(migratedNotes) notes, \(migratedFolders) folders")
     }
 
     // MARK: - Helpers

@@ -126,6 +126,12 @@ actor MockSupabaseService: SupabaseServiceProtocol {
         return true
     }
 
+    var migratePathsToNFCCalls: Int = 0
+
+    func migratePathsToNFC(config: SupabaseService.Config) async {
+        migratePathsToNFCCalls += 1
+    }
+
     func testConnection(config: SupabaseService.Config) async -> Bool {
         testConnectionCalls += 1
         return !shouldFail

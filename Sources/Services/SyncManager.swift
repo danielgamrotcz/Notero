@@ -96,6 +96,13 @@ actor SyncManager {
         savePendingSync()
     }
 
+    func clearAllDirtyPaths() {
+        pendingSync.dirtyNotePaths.removeAll()
+        pendingSync.dirtyFolderPaths.removeAll()
+        savePendingSync()
+        Log.sync.info("Cleared all dirty paths")
+    }
+
     // MARK: - Startup Sync
 
     func performStartupSync(config: SupabaseService.Config, vaultURL: URL, favourites: [String] = []) async -> [String]? {

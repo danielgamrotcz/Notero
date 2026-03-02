@@ -8,6 +8,7 @@ protocol SupabaseServiceProtocol: Actor {
     func deleteFolder(path: String, config: SupabaseService.Config) async -> Bool
     func syncFavourites(paths: [String], config: SupabaseService.Config) async -> Bool
     func updateNoteCreatedAt(path: String, createdAt: Date, config: SupabaseService.Config) async -> Bool
+    func migratePathsToNFC(config: SupabaseService.Config) async
     func testConnection(config: SupabaseService.Config) async -> Bool
     func fetchAllNotes(config: SupabaseService.Config) async throws -> [[String: Any]]
     func fetchAllFolders(config: SupabaseService.Config) async throws -> [[String: Any]]

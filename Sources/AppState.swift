@@ -194,6 +194,13 @@ final class AppState: ObservableObject {
         let favPaths = await syncManager.performStartupSync(config: config, vaultURL: vaultURL, favourites: favoritesManager.orderedFavorites)
         await syncManager.backfillCreationDates(config: config, vaultURL: vaultURL)
 
+        // One-time migration of NFD paths to NFC in Supabase
+        if !UserDefaults.standard.bool(forKey: "pathNFCMigrationDone") {
+            await supabaseService.migratePathsToNFC(config: config)
+            await syncManager.clearAllDirtyPaths()
+            UserDefaults.standard.set(true, forKey: "pathNFCMigrationDone")
+        }
+
         vaultManager.loadFileTree(sortOrder: sortOrder)
         await searchService.buildIndex()
         if let favPaths { favoritesManager.replaceFromRemote(favPaths) }
