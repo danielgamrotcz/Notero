@@ -1,7 +1,7 @@
 import Foundation
 
 actor SupabaseService: SupabaseServiceProtocol {
-    struct Config {
+    struct Config: Codable {
         let url: String
         let serviceKey: String
         let userId: String

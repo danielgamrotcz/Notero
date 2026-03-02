@@ -79,6 +79,20 @@ enum KeychainManager {
         UserDefaults.standard.removeObject(forKey: "fallback_\(key)")
     }
 
+    static func save<T: Encodable>(key: String, codable value: T) throws {
+        let data = try JSONEncoder().encode(value)
+        guard let json = String(data: data, encoding: .utf8) else {
+            throw KeychainError.saveFailed(-1)
+        }
+        try save(key: key, value: json)
+    }
+
+    static func loadCodable<T: Decodable>(key: String, as type: T.Type) -> T? {
+        guard let json = load(key: key),
+              let data = json.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+
     static func hasKey(_ key: String) -> Bool {
         load(key: key) != nil
     }

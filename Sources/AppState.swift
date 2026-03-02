@@ -343,13 +343,26 @@ extension AppState {
     }
 
     private static func loadSupabaseConfig() -> SupabaseService.Config? {
+        // Consolidated key (1 keychain read)
+        if let config = KeychainManager.loadCodable(key: "NoteroSupabaseConfig", as: SupabaseService.Config.self),
+           config.isValid {
+            return config
+        }
+        // Migration: try legacy keys
         guard let url = KeychainManager.load(key: "NoteroSupabaseURL"),
               let key = KeychainManager.load(key: "NoteroSupabaseKey"),
               let uid = KeychainManager.load(key: "NoteroSupabaseUserID") else {
             return nil
         }
         let config = SupabaseService.Config(url: url, serviceKey: key, userId: uid)
-        return config.isValid ? config : nil
+        guard config.isValid else { return nil }
+        // Save consolidated and delete legacy keys
+        if let _ = try? KeychainManager.save(key: "NoteroSupabaseConfig", codable: config) {
+            KeychainManager.delete(key: "NoteroSupabaseURL")
+            KeychainManager.delete(key: "NoteroSupabaseKey")
+            KeychainManager.delete(key: "NoteroSupabaseUserID")
+        }
+        return config
     }
 
     func invalidateSupabaseConfigCache() {

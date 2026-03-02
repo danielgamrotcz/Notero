@@ -100,24 +100,29 @@ struct SyncSettingsView: View {
     }
 
     private func loadConfig() {
-        supabaseURL = KeychainManager.load(key: "NoteroSupabaseURL") ?? ""
-        userIdInput = KeychainManager.load(key: "NoteroSupabaseUserID") ?? ""
-        hasConfig = KeychainManager.hasKey("NoteroSupabaseKey")
+        if let config = KeychainManager.loadCodable(key: "NoteroSupabaseConfig", as: SupabaseService.Config.self) {
+            supabaseURL = config.url
+            userIdInput = config.userId
+            hasConfig = true
+        }
     }
 
     private func saveConfig() {
         do {
-            if !supabaseURL.trimmingCharacters(in: .whitespaces).isEmpty {
-                try KeychainManager.save(key: "NoteroSupabaseURL", value: supabaseURL)
+            let existing = KeychainManager.loadCodable(key: "NoteroSupabaseConfig", as: SupabaseService.Config.self)
+            let url = supabaseURL.trimmingCharacters(in: .whitespaces)
+            let uid = userIdInput.trimmingCharacters(in: .whitespaces)
+            let cleanKey = serviceKeyInput.filter { !$0.isWhitespace }
+            let key = cleanKey.isEmpty ? (existing?.serviceKey ?? "") : cleanKey
+
+            guard !url.isEmpty, !key.isEmpty, !uid.isEmpty else {
+                saveMessage = "All fields are required"
+                saveMessageIsError = true
+                return
             }
-            if !serviceKeyInput.trimmingCharacters(in: .whitespaces).isEmpty {
-                // Strip all whitespace — JWTs pasted from web often contain line breaks
-                let cleanKey = serviceKeyInput.filter { !$0.isWhitespace }
-                try KeychainManager.save(key: "NoteroSupabaseKey", value: cleanKey)
-            }
-            if !userIdInput.trimmingCharacters(in: .whitespaces).isEmpty {
-                try KeychainManager.save(key: "NoteroSupabaseUserID", value: userIdInput)
-            }
+
+            let config = SupabaseService.Config(url: url, serviceKey: key, userId: uid)
+            try KeychainManager.save(key: "NoteroSupabaseConfig", codable: config)
             serviceKeyInput = ""
             hasConfig = true
             saveMessage = "Saved"
@@ -131,6 +136,8 @@ struct SyncSettingsView: View {
     }
 
     private func deleteConfig() {
+        KeychainManager.delete(key: "NoteroSupabaseConfig")
+        // Clean up legacy keys (safety net)
         KeychainManager.delete(key: "NoteroSupabaseURL")
         KeychainManager.delete(key: "NoteroSupabaseKey")
         KeychainManager.delete(key: "NoteroSupabaseUserID")
