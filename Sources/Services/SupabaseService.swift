@@ -110,15 +110,23 @@ actor SupabaseService: SupabaseServiceProtocol {
             for (index, path) in paths.enumerated() {
                 let pathWithoutMd = path.hasSuffix(".md") ? String(path.dropLast(3)) : path
                 let encoded = pathWithoutMd.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? pathWithoutMd
+
+                // Try notes table first
                 let noteQs = "?user_id=eq.\(config.userId)&path=eq.\(encoded)&select=id"
                 let notes = try await request(method: "GET", table: "notes", params: noteQs, config: config)
-                guard let noteId = notes.first?["id"] as? String else { continue }
 
-                let fav: [String: Any] = [
+                var fav: [String: Any] = [
                     "user_id": config.userId,
-                    "note_id": noteId,
                     "sort_order": index,
                 ]
+
+                if let noteId = notes.first?["id"] as? String {
+                    fav["note_id"] = noteId
+                } else {
+                    // It's a folder — store path directly
+                    fav["path"] = pathWithoutMd
+                }
+
                 _ = try await request(method: "POST", table: "favourites", data: fav, config: config)
             }
             return true
@@ -177,7 +185,7 @@ actor SupabaseService: SupabaseServiceProtocol {
     }
 
     func fetchFavourites(config: Config) async throws -> [[String: Any]] {
-        let qs = "?user_id=eq.\(config.userId)&select=note_id,sort_order,notes(path)&order=sort_order.asc"
+        let qs = "?user_id=eq.\(config.userId)&select=note_id,sort_order,path,notes(path)&order=sort_order.asc"
         return try await request(method: "GET", table: "favourites", params: qs, config: config)
     }
 

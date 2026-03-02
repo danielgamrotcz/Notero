@@ -421,9 +421,14 @@ actor SyncManager {
 
         var paths: [String] = []
         for row in rows {
-            guard let noteDict = row["notes"] as? [String: Any],
-                  let notePath = noteDict["path"] as? String else { continue }
-            paths.append(notePath + ".md")
+            if let noteDict = row["notes"] as? [String: Any],
+               let notePath = noteDict["path"] as? String {
+                // It's a file favourite
+                paths.append(notePath + ".md")
+            } else if let folderPath = row["path"] as? String {
+                // It's a folder favourite — no .md extension
+                paths.append(folderPath)
+            }
         }
         return paths.isEmpty ? nil : paths
     }
