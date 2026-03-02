@@ -188,16 +188,29 @@ struct FindReplaceView: View {
         if currentMatch > totalMatches { currentMatch = totalMatches }
         if currentMatch == 0 && totalMatches > 0 { currentMatch = 1 }
         if totalMatches == 0 { currentMatch = 0 }
+        scrollToCurrentMatch()
     }
 
     private func findNext() {
         guard totalMatches > 0 else { return }
         currentMatch = currentMatch < totalMatches ? currentMatch + 1 : 1
+        scrollToCurrentMatch()
     }
 
     private func findPrevious() {
         guard totalMatches > 0 else { return }
         currentMatch = currentMatch > 1 ? currentMatch - 1 : totalMatches
+        scrollToCurrentMatch()
+    }
+
+    private func scrollToCurrentMatch() {
+        let matches = allMatches()
+        guard currentMatch > 0, currentMatch <= matches.count else { return }
+        let range = matches[currentMatch - 1].range
+        NotificationCenter.default.post(
+            name: .scrollToFindMatch, object: nil,
+            userInfo: ["range": NSValue(range: range)]
+        )
     }
 
     private func replaceCurrent() {

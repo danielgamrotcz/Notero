@@ -106,6 +106,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         let coordinator = context.coordinator
 
         if textView.string != text {
+            coordinator.clearSearchHighlight()
             coordinator.dismissCompletion()
             // Save scroll and cursor position for the old note
             if let oldURL = coordinator.currentURL {
@@ -154,15 +155,15 @@ struct MarkdownEditorView: NSViewRepresentable {
         context.coordinator.updateFontSize(fontSize)
         textView.isContinuousSpellCheckingEnabled = spellCheck
 
-        // Activate find bar with search term if pending
-        if let searchBinding = pendingSearchHighlight, let term = searchBinding.wrappedValue, !term.isEmpty {
+        // Highlight and scroll to search match if pending
+        if let searchBinding = pendingSearchHighlight,
+           let term = searchBinding.wrappedValue, !term.isEmpty {
             DispatchQueue.main.async {
-                // Set the search string on the pasteboard used by Find
-                let pb = NSPasteboard(name: .find)
-                pb.clearContents()
-                pb.setString(term, forType: .string)
-                // Show the find bar
-                textView.performFindPanelAction(NSMenuItem(title: "", action: nil, keyEquivalent: ""))
+                coordinator.findAllMatches(for: term, in: textView)
+                if !coordinator.searchMatchRanges.isEmpty {
+                    coordinator.currentSearchMatchIndex = 0
+                    coordinator.scrollToCurrentMatch(in: textView)
+                }
                 searchBinding.wrappedValue = nil
             }
         }
@@ -190,6 +191,11 @@ struct MarkdownEditorView: NSViewRepresentable {
         var currentURL: URL?
         var lastKnownScrollY: CGFloat = 0
 
+        // Search match navigation
+        var searchMatchRanges: [NSRange] = []
+        var currentSearchMatchIndex: Int = -1
+        private var activeSearchTerm: String?
+
         // Wiki-link autocomplete
         private let completionPanel = WikiLinkCompletionPanel()
         private(set) var isCompletionActive = false
@@ -210,6 +216,14 @@ struct MarkdownEditorView: NSViewRepresentable {
             NotificationCenter.default.addObserver(
                 self, selector: #selector(handleInsertMarkdownFormat(_:)),
                 name: .insertMarkdownFormat, object: nil
+            )
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(handleNavigateNextMatch(_:)),
+                name: .navigateNextSearchMatch, object: nil
+            )
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(handleScrollToFindMatch(_:)),
+                name: .scrollToFindMatch, object: nil
             )
         }
 
@@ -447,6 +461,71 @@ struct MarkdownEditorView: NSViewRepresentable {
             }
 
             dismissCompletion()
+        }
+
+        // MARK: - Search Match Navigation
+
+        func findAllMatches(for term: String, in textView: NSTextView) {
+            let text = textView.string as NSString
+            var ranges: [NSRange] = []
+            var searchRange = NSRange(location: 0, length: text.length)
+            while searchRange.location < text.length {
+                let found = text.range(
+                    of: term,
+                    options: [.caseInsensitive, .diacriticInsensitive],
+                    range: searchRange
+                )
+                guard found.location != NSNotFound else { break }
+                ranges.append(found)
+                searchRange.location = found.location + found.length
+                searchRange.length = text.length - searchRange.location
+            }
+            searchMatchRanges = ranges
+            activeSearchTerm = term
+            currentSearchMatchIndex = -1
+        }
+
+        func scrollToCurrentMatch(in textView: NSTextView) {
+            guard currentSearchMatchIndex >= 0,
+                  currentSearchMatchIndex < searchMatchRanges.count else { return }
+            let range = searchMatchRanges[currentSearchMatchIndex]
+            textView.setSelectedRange(range)
+            textView.scrollRangeToVisible(range)
+            textView.showFindIndicator(for: range)
+        }
+
+        func clearSearchHighlight() {
+            searchMatchRanges = []
+            currentSearchMatchIndex = -1
+            activeSearchTerm = nil
+        }
+
+        @objc func handleNavigateNextMatch(_ notification: Notification) {
+            guard let textView = textView,
+                  let term = notification.userInfo?["searchText"] as? String else { return }
+            if term != activeSearchTerm {
+                findAllMatches(for: term, in: textView)
+            }
+            guard !searchMatchRanges.isEmpty else {
+                NotificationCenter.default.post(name: .navigateNextSearchResult, object: nil)
+                return
+            }
+            currentSearchMatchIndex += 1
+            if currentSearchMatchIndex >= searchMatchRanges.count {
+                currentSearchMatchIndex = -1
+                NotificationCenter.default.post(name: .navigateNextSearchResult, object: nil)
+                return
+            }
+            scrollToCurrentMatch(in: textView)
+        }
+
+        @objc func handleScrollToFindMatch(_ notification: Notification) {
+            guard let textView = textView,
+                  let rangeValue = notification.userInfo?["range"] as? NSValue else { return }
+            let range = rangeValue.rangeValue
+            textView.setSelectedRange(range)
+            textView.scrollRangeToVisible(range)
+            textView.showFindIndicator(for: range)
         }
 
         // MARK: - Highlighting

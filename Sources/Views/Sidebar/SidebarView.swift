@@ -19,7 +19,11 @@ struct SidebarView: View {
                     .font(.system(size: 13))
                     .focused($isSearchFieldFocused)
                     .onSubmit {
-                        Task { await appState.searchService.search(query: searchText) }
+                        guard !searchText.isEmpty, !appState.searchService.results.isEmpty else { return }
+                        NotificationCenter.default.post(
+                            name: .navigateNextSearchMatch, object: nil,
+                            userInfo: ["searchText": searchText]
+                        )
                     }
                 if !searchText.isEmpty {
                     Button {
@@ -110,6 +114,14 @@ struct SidebarView: View {
                 isSearchFieldFocused = true
                 appState.focusSidebarSearch = false
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateNextSearchResult)) { _ in
+            guard !appState.searchService.results.isEmpty else { return }
+            let nextIndex = (focusedSearchResultIndex + 1) % appState.searchService.results.count
+            focusedSearchResultIndex = nextIndex
+            let result = appState.searchService.results[nextIndex]
+            noteState.openNote(url: result.noteURL)
+            noteState.pendingSearchHighlight = searchText
         }
     }
 
@@ -437,6 +449,7 @@ struct SidebarView: View {
         ForEach(Array(appState.searchService.results.enumerated()), id: \.element.id) { index, result in
             Button {
                 noteState.openNote(url: result.noteURL)
+                noteState.pendingSearchHighlight = searchText
                 focusedSearchResultIndex = index
             } label: {
                 VStack(alignment: .leading, spacing: 2) {

@@ -639,6 +639,9 @@ extension AppState {
 extension Notification.Name {
     static let aiTextImproved = Notification.Name("NoteroAITextImproved")
     static let insertMarkdownFormat = Notification.Name("NoteroInsertMarkdownFormat")
+    static let navigateNextSearchMatch = Notification.Name("NoteroNavigateNextSearchMatch")
+    static let navigateNextSearchResult = Notification.Name("NoteroNavigateNextSearchResult")
+    static let scrollToFindMatch = Notification.Name("NoteroScrollToFindMatch")
 }
 
 private extension Double {
