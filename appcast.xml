@@ -285,5 +285,13 @@
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/danielgamrotcz/Notero/releases/download/v1.11.6/Notero-1.11.6.zip" sparkle:edSignature="F/t4co/XwQM+Rz2Wy4X9oa1dU4o844ckyiUdyA3/nfW+kAz4pXQHoa/cdl4ONPz5LGZZ0LemSbmbtK9iRsj0BA==" length="2305949" type="application/octet-stream"/>
         </item>
+        <item>
+            <title>1.11.7</title>
+            <pubDate>Mon, 02 Mar 2026 07:45:10 +0000</pubDate>
+            <sparkle:version>36</sparkle:version>
+            <sparkle:shortVersionString>1.11.7</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/danielgamrotcz/Notero/releases/download/v1.11.7/Notero-1.11.7.zip" sparkle:edSignature="dwg0inMCVk8kp2OgRzAbGuCwHVIaLyKyDRPeTnexAkCOVUdPAEuAjiMw1ref/gIgFPbGpdyhPT+QmwuZD6vmAg==" length="2311444" type="application/octet-stream"/>
+        </item>
     </channel>
 </rss>
