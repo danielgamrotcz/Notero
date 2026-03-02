@@ -62,8 +62,9 @@ actor MockSupabaseService: SupabaseServiceProtocol {
                 "deleted_at": now,
                 "user_id": config.userId,
             ])
+            return true
         }
-        return true
+        return false
     }
 
     func renameNote(oldPath: String, newPath: String, config: SupabaseService.Config) async -> Bool {
@@ -99,8 +100,9 @@ actor MockSupabaseService: SupabaseServiceProtocol {
                 "deleted_at": now,
                 "user_id": config.userId,
             ])
+            return true
         }
-        return true
+        return false
     }
 
     func syncFavourites(paths: [String], config: SupabaseService.Config) async -> Bool {

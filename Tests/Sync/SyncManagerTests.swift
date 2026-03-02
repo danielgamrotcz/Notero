@@ -342,4 +342,73 @@ final class SyncManagerTests: XCTestCase {
         XCTAssertTrue(paths.contains("b"), "Expected 'b' in pushed paths: \(paths)")
         XCTAssertTrue(paths.contains("c"), "Expected 'c' in pushed paths: \(paths)")
     }
+
+    // MARK: - I. Deletion Bug Fixes
+
+    func testI1_startupSyncRetriesDirtyPaths() async {
+        createVault()
+        writeLocalNote("dirty-note", content: "updated content")
+        await mock.addRemoteNote(path: "dirty-note", content: "old content")
+
+        // Write dirty state to disk
+        var state = PendingSyncState()
+        state.dirtyNotePaths.insert("dirty-note")
+        let data = try! JSONEncoder().encode(state)
+        try! data.write(to: pendingSyncURL)
+
+        syncManager = SyncManager(
+            supabaseService: mock,
+            pendingSyncURL: pendingSyncURL,
+            lastSyncTimeKey: lastSyncKey
+        )
+
+        _ = await syncManager.performStartupSync(config: config, vaultURL: vaultURL())
+
+        let syncCalls = await mock.syncNoteCalls
+        XCTAssertTrue(syncCalls.contains(where: { $0.path == "dirty-note" }),
+                       "Dirty note should be retried during startup sync")
+        let pending = await syncManager.testingGetPendingSync()
+        XCTAssertFalse(pending.dirtyNotePaths.contains("dirty-note"),
+                        "Dirty path should be cleared after successful retry")
+    }
+
+    func testI2_dirtyDeletedNoteNotRestoredDuringInitialSync() async {
+        createVault()
+        // Note exists on remote but not locally, and is in dirtyNotePaths
+        await mock.addRemoteNote(path: "gone-note", content: "should not restore")
+
+        var state = PendingSyncState()
+        state.dirtyNotePaths.insert("gone-note")
+        let data = try! JSONEncoder().encode(state)
+        try! data.write(to: pendingSyncURL)
+
+        syncManager = SyncManager(
+            supabaseService: mock,
+            pendingSyncURL: pendingSyncURL,
+            lastSyncTimeKey: lastSyncKey
+        )
+
+        _ = await syncManager.performStartupSync(config: config, vaultURL: vaultURL())
+
+        // Note should NOT be written locally
+        XCTAssertFalse(localNoteExists("gone-note"),
+                        "Dirty-deleted note should not be restored from remote")
+        // deleteNote should have been called
+        let deleteCalls = await mock.deleteNoteCalls
+        XCTAssertTrue(deleteCalls.contains("gone-note"),
+                       "Should attempt to delete dirty note from Supabase")
+    }
+
+    func testI3_deleteNoteReturnsFalseWhenNotOnRemote() async {
+        createVault()
+        // Note does NOT exist in mock's notes dict
+        let result = await mock.deleteNote(path: "nonexistent", config: config)
+        XCTAssertFalse(result, "deleteNote should return false when no rows were deleted")
+    }
+
+    func testI4_deleteFolderReturnsFalseWhenNotOnRemote() async {
+        createVault()
+        let result = await mock.deleteFolder(path: "nonexistent-folder", config: config)
+        XCTAssertFalse(result, "deleteFolder should return false when no rows were deleted")
+    }
 }

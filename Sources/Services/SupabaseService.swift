@@ -12,9 +12,14 @@ actor SupabaseService: SupabaseServiceProtocol {
     private let session = URLSession.shared
     private var folderCache: [String: String] = [:]
 
+    private static func nfc(_ path: String) -> String {
+        path.precomposedStringWithCanonicalMapping
+    }
+
     // MARK: - Public API
 
     func syncNote(path: String, title: String, content: String, createdAt: Date? = nil, config: Config) async -> Bool {
+        let path = Self.nfc(path)
         guard config.isValid else { return false }
         do {
             let folderPath = (path as NSString).deletingLastPathComponent
@@ -39,12 +44,14 @@ actor SupabaseService: SupabaseServiceProtocol {
     }
 
     func deleteNote(path: String, config: Config) async -> Bool {
+        let path = Self.nfc(path)
         guard config.isValid else { return false }
         do {
             let encoded = path.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? path
             let qs = "?user_id=eq.\(config.userId)&path=eq.\(encoded)"
-            _ = try await request(method: "DELETE", table: "notes", params: qs, config: config)
-            return true
+            let rows = try await request(method: "DELETE", table: "notes", params: qs,
+                                         extraHeaders: ["Prefer": "return=representation"], config: config)
+            return !rows.isEmpty
         } catch {
             Log.general.warning("SupabaseService.deleteNote failed: \(error)")
             return false
@@ -52,6 +59,8 @@ actor SupabaseService: SupabaseServiceProtocol {
     }
 
     func renameNote(oldPath: String, newPath: String, config: Config) async -> Bool {
+        let oldPath = Self.nfc(oldPath)
+        let newPath = Self.nfc(newPath)
         guard config.isValid else { return false }
         do {
             let encoded = oldPath.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? oldPath
@@ -75,6 +84,7 @@ actor SupabaseService: SupabaseServiceProtocol {
     }
 
     func syncFolder(path: String, parentPath: String?, config: Config) async -> Bool {
+        let path = Self.nfc(path)
         guard config.isValid else { return false }
         do {
             _ = try await ensureFolder(path: path, config: config)
@@ -86,13 +96,15 @@ actor SupabaseService: SupabaseServiceProtocol {
     }
 
     func deleteFolder(path: String, config: Config) async -> Bool {
+        let path = Self.nfc(path)
         guard config.isValid else { return false }
         do {
             let encoded = path.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? path
             let qs = "?user_id=eq.\(config.userId)&path=eq.\(encoded)"
-            _ = try await request(method: "DELETE", table: "folders", params: qs, config: config)
+            let rows = try await request(method: "DELETE", table: "folders", params: qs,
+                                         extraHeaders: ["Prefer": "return=representation"], config: config)
             folderCache.removeValue(forKey: path)
-            return true
+            return !rows.isEmpty
         } catch {
             Log.general.warning("SupabaseService.deleteFolder failed: \(error)")
             return false
@@ -108,7 +120,7 @@ actor SupabaseService: SupabaseServiceProtocol {
 
             // Re-insert in order
             for (index, path) in paths.enumerated() {
-                let pathWithoutMd = path.hasSuffix(".md") ? String(path.dropLast(3)) : path
+                let pathWithoutMd = Self.nfc(path.hasSuffix(".md") ? String(path.dropLast(3)) : path)
                 let encoded = pathWithoutMd.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? pathWithoutMd
 
                 // Try notes table first
@@ -212,6 +224,7 @@ actor SupabaseService: SupabaseServiceProtocol {
     }
 
     func updateNoteCreatedAt(path: String, createdAt: Date, config: Config) async -> Bool {
+        let path = Self.nfc(path)
         guard config.isValid else { return false }
         do {
             let encoded = path.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? path

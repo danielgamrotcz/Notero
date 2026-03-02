@@ -191,7 +191,7 @@ final class AppState: ObservableObject {
         }
         syncState = .syncing
         let vaultURL = vaultManager.vaultURL
-        let favPaths = await syncManager.performStartupSync(config: config, vaultURL: vaultURL)
+        let favPaths = await syncManager.performStartupSync(config: config, vaultURL: vaultURL, favourites: favoritesManager.orderedFavorites)
         await syncManager.backfillCreationDates(config: config, vaultURL: vaultURL)
 
         vaultManager.loadFileTree(sortOrder: sortOrder)

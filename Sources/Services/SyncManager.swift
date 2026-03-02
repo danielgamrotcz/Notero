@@ -98,10 +98,12 @@ actor SyncManager {
 
     // MARK: - Startup Sync
 
-    func performStartupSync(config: SupabaseService.Config, vaultURL: URL) async -> [String]? {
+    func performStartupSync(config: SupabaseService.Config, vaultURL: URL, favourites: [String] = []) async -> [String]? {
         guard !isSyncing else { return nil }
         isSyncing = true
         defer { isSyncing = false }
+
+        await retryDirtyPaths(config: config, vaultURL: vaultURL, favourites: favourites)
 
         do {
             try await performInitialSync(config: config, vaultURL: vaultURL)
@@ -290,7 +292,16 @@ actor SyncManager {
                 continue
             }
 
+            // If in dirty paths and local file doesn't exist, treat as pending deletion
             let fileURL = vaultURL.appendingPathComponent(path + ".md")
+            if pendingSync.dirtyNotePaths.contains(path) && !FileManager.default.fileExists(atPath: fileURL.path) {
+                let ok = await supabaseService.deleteNote(path: path, config: config)
+                if ok {
+                    pendingSync.dirtyNotePaths.remove(path)
+                    Log.sync.info("Completed dirty deletion from Supabase: \(path)")
+                }
+                continue
+            }
             guard shouldWriteRemote(note: note, to: fileURL) else {
                 Log.sync.debug("Skipped initial sync write (local newer): \(path)")
                 continue

@@ -74,6 +74,7 @@ final class FavoritesManager: ObservableObject {
 
     func relativePath(for url: URL, vaultURL: URL) -> String {
         url.path.replacingOccurrences(of: vaultURL.path + "/", with: "")
+            .precomposedStringWithCanonicalMapping
     }
 
     private func save() {
