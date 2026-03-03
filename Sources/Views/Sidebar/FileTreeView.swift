@@ -169,6 +169,18 @@ struct FileTreeView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(link, forType: .string)
             }
+            Button("Copy Note ID") {
+                let meta = NoteMetadataService.shared.metadata(for: fileNode.url)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(meta.id, forType: .string)
+            }
+            Button("Copy Note Path") {
+                let relative = fileNode.url.path.replacingOccurrences(
+                    of: appState.vaultManager.vaultURL.path + "/", with: ""
+                )
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(relative, forType: .string)
+            }
         }
     }
 
