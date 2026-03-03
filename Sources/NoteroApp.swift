@@ -104,6 +104,25 @@ struct NoteroApp: App {
                     noteState?.exportAsMarkdown()
                 }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
+
+                Divider()
+
+                Button("Copy Note ID") {
+                    guard let url = noteState?.selectedNoteURL else { return }
+                    let meta = NoteMetadataService.shared.metadata(for: url)
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(meta.id, forType: .string)
+                }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+
+                Button("Copy Note Path") {
+                    guard let url = noteState?.selectedNoteURL else { return }
+                    let vaultPath = appState.vaultManager.vaultURL.path
+                    let relative = url.path.replacingOccurrences(of: vaultPath + "/", with: "")
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(relative, forType: .string)
+                }
+                .keyboardShortcut("c", modifiers: [.command, .option])
             }
 
             // Edit menu additions
@@ -229,11 +248,6 @@ struct NoteroApp: App {
 
                 Divider()
 
-                Button("Graph View") {
-                    openGraphView()
-                }
-                .keyboardShortcut("g", modifiers: [.command, .shift])
-
                 Button("Vault Statistics") {
                     openVaultStatistics()
                 }
@@ -280,17 +294,6 @@ struct NoteroApp: App {
             SettingsView(updater: updaterController.updater)
                 .environmentObject(appState)
         }
-    }
-
-    private func openGraphView() {
-        let graphView = GraphView().environmentObject(appState)
-        let hostingController = NSHostingController(rootView: graphView)
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = "Graph View"
-        window.setContentSize(NSSize(width: 900, height: 600))
-        window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
-        window.center()
-        window.makeKeyAndOrderFront(nil)
     }
 
     private func openVaultStatistics() {
