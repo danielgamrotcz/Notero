@@ -129,6 +129,83 @@ final class LinkResolverTests: XCTestCase {
         XCTAssertEqual(linkResolver.backlinks.first?.noteName, "Linker")
     }
 
+    // MARK: - updateWikilinks Tests
+
+    func testUpdateWikilinks_basic() {
+        let noteA = tempDir.appendingPathComponent("Old Note.md")
+        let noteB = tempDir.appendingPathComponent("Other.md")
+        try! "".write(to: noteA, atomically: true, encoding: .utf8)
+        try! "See [[Old Note]] for info".write(to: noteB, atomically: true, encoding: .utf8)
+        vaultManager.loadFileTree()
+
+        let newURL = tempDir.appendingPathComponent("New Note.md")
+        linkResolver.updateWikilinks(oldName: "Old Note", newName: "New Note", excludingNoteAt: newURL)
+
+        let updated = try! String(contentsOf: noteB, encoding: .utf8)
+        XCTAssertEqual(updated, "See [[New Note]] for info")
+    }
+
+    func testUpdateWikilinks_pipeSyntax() {
+        let noteA = tempDir.appendingPathComponent("Old.md")
+        let noteB = tempDir.appendingPathComponent("Linker.md")
+        try! "".write(to: noteA, atomically: true, encoding: .utf8)
+        try! "Check [[Old|my label]] here".write(to: noteB, atomically: true, encoding: .utf8)
+        vaultManager.loadFileTree()
+
+        let newURL = tempDir.appendingPathComponent("New.md")
+        linkResolver.updateWikilinks(oldName: "Old", newName: "New", excludingNoteAt: newURL)
+
+        let updated = try! String(contentsOf: noteB, encoding: .utf8)
+        XCTAssertEqual(updated, "Check [[New|my label]] here")
+    }
+
+    func testUpdateWikilinks_multipleLinks() {
+        let noteB = tempDir.appendingPathComponent("Multi.md")
+        try! "First [[Target]] and second [[Target|x]]".write(to: noteB, atomically: true, encoding: .utf8)
+        vaultManager.loadFileTree()
+
+        let newURL = tempDir.appendingPathComponent("Renamed.md")
+        linkResolver.updateWikilinks(oldName: "Target", newName: "Renamed", excludingNoteAt: newURL)
+
+        let updated = try! String(contentsOf: noteB, encoding: .utf8)
+        XCTAssertEqual(updated, "First [[Renamed]] and second [[Renamed|x]]")
+    }
+
+    func testUpdateWikilinks_caseInsensitive() {
+        let noteB = tempDir.appendingPathComponent("CaseTest.md")
+        try! "Link to [[old note]] here".write(to: noteB, atomically: true, encoding: .utf8)
+        vaultManager.loadFileTree()
+
+        let newURL = tempDir.appendingPathComponent("New Note.md")
+        linkResolver.updateWikilinks(oldName: "Old Note", newName: "New Note", excludingNoteAt: newURL)
+
+        let updated = try! String(contentsOf: noteB, encoding: .utf8)
+        XCTAssertEqual(updated, "Link to [[New Note]] here")
+    }
+
+    func testUpdateWikilinks_excludedNote() {
+        let noteA = tempDir.appendingPathComponent("Self.md")
+        try! "Link to [[Self]] in self".write(to: noteA, atomically: true, encoding: .utf8)
+        vaultManager.loadFileTree()
+
+        linkResolver.updateWikilinks(oldName: "Self", newName: "Renamed", excludingNoteAt: noteA)
+
+        let content = try! String(contentsOf: noteA, encoding: .utf8)
+        XCTAssertEqual(content, "Link to [[Self]] in self", "Excluded note should not be modified")
+    }
+
+    func testUpdateWikilinks_unrelatedUntouched() {
+        let noteB = tempDir.appendingPathComponent("Bystander.md")
+        try! "Link to [[Other Note]] only".write(to: noteB, atomically: true, encoding: .utf8)
+        vaultManager.loadFileTree()
+
+        let newURL = tempDir.appendingPathComponent("New.md")
+        linkResolver.updateWikilinks(oldName: "Target", newName: "New", excludingNoteAt: newURL)
+
+        let content = try! String(contentsOf: noteB, encoding: .utf8)
+        XCTAssertEqual(content, "Link to [[Other Note]] only", "Unrelated links should not be modified")
+    }
+
     func testPipeSyntax() {
         let noteURL = tempDir.appendingPathComponent("RealNote.md")
         FileManager.default.createFile(atPath: noteURL.path, contents: nil)

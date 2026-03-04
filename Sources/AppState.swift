@@ -317,7 +317,15 @@ final class AppState: ObservableObject {
             renamingItemURL = nil
             return
         }
+        let oldName = url.deletingPathExtension().lastPathComponent
         if let newURL = vaultManager.renameItem(at: url, to: trimmed) {
+            if url.pathExtension == "md" {
+                linkResolver.updateWikilinks(
+                    oldName: oldName,
+                    newName: newURL.deletingPathExtension().lastPathComponent,
+                    excludingNoteAt: newURL
+                )
+            }
             // Update selection in matching NoteState
             for noteState in noteStates.allObjects {
                 if noteState.selectedNoteURL == url {

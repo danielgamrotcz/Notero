@@ -58,6 +58,30 @@ final class LinkResolver: ObservableObject {
         backlinks = results
     }
 
+    func updateWikilinks(oldName: String, newName: String, excludingNoteAt excludedURL: URL) {
+        guard let vault = vaultManager else { return }
+        let escaped = NSRegularExpression.escapedPattern(for: oldName)
+        let pattern = "\\[\\[\(escaped)(\\|[^\\]]*)?\\]\\]"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return }
+
+        let excludedStandardized = excludedURL.standardizedFileURL
+        for fileURL in vault.allMarkdownFiles() where fileURL.standardizedFileURL != excludedStandardized {
+            guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else { continue }
+            let range = NSRange(content.startIndex..., in: content)
+            guard regex.firstMatch(in: content, range: range) != nil else { continue }
+
+            let updated = regex.stringByReplacingMatches(
+                in: content, range: range,
+                withTemplate: "[[\(NSRegularExpression.escapedTemplate(for: newName))$1]]"
+            )
+            do {
+                try updated.write(to: fileURL, atomically: true, encoding: .utf8)
+            } catch {
+                Log.vault.error("Failed to update wikilinks in \(fileURL.lastPathComponent): \(error)")
+            }
+        }
+    }
+
     func allNoteNames() -> [(name: String, url: URL)] {
         guard let vault = vaultManager else { return [] }
         return vault.allMarkdownFiles().map { url in

@@ -555,6 +555,11 @@ final class NoteState: ObservableObject {
 
         do {
             try FileManager.default.moveItem(at: url, to: targetURL)
+            let oldName = url.deletingPathExtension().lastPathComponent
+            let newName = targetURL.deletingPathExtension().lastPathComponent
+            appState.linkResolver.updateWikilinks(
+                oldName: oldName, newName: newName, excludingNoteAt: targetURL
+            )
             selectedNoteURL = targetURL
             if selectedNoteURLs.contains(url) {
                 selectedNoteURLs.remove(url)
