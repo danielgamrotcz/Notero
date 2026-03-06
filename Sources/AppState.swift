@@ -156,6 +156,7 @@ final class AppState: ObservableObject {
 
     private func flushPendingSaves() {
         autoSaveService.flushIfNeeded()
+        ScrollPositionStore.shared.flush()
     }
 
     /// Synchronously writes a pending deletion to disk so it survives app termination.

@@ -44,6 +44,7 @@ final class NoteState: ObservableObject {
 
         if let currentURL = selectedNoteURL {
             appState.autoSaveService.saveImmediately(content: currentContent, to: currentURL)
+            ScrollPositionStore.shared.save(fraction: scrollFraction, for: currentURL, relativeTo: appState.vaultManager.vaultURL)
         }
 
         if let content = appState.vaultManager.readNote(at: url) {
@@ -60,7 +61,7 @@ final class NoteState: ObservableObject {
             let modeKey = "mode-\(url.lastPathComponent)"
             isPreviewMode = UserDefaults.standard.bool(forKey: modeKey)
 
-            scrollFraction = 0
+            scrollFraction = ScrollPositionStore.shared.fraction(for: url, relativeTo: appState.vaultManager.vaultURL)
             appState.linkResolver.findBacklinks(for: url)
             persistLastOpenedNote(url: url)
             pushToHistory(url: url)
@@ -116,6 +117,10 @@ final class NoteState: ObservableObject {
         guard let appState = appState,
               let content = appState.vaultManager.readNote(at: url) else { return }
 
+        if let currentURL = selectedNoteURL {
+            ScrollPositionStore.shared.save(fraction: scrollFraction, for: currentURL, relativeTo: appState.vaultManager.vaultURL)
+        }
+
         currentContent = content
         selectedNoteURL = url
 
@@ -125,7 +130,7 @@ final class NoteState: ObservableObject {
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         currentNoteModified = attrs?[.modificationDate] as? Date
 
-        scrollFraction = 0
+        scrollFraction = ScrollPositionStore.shared.fraction(for: url, relativeTo: appState.vaultManager.vaultURL)
 
         let modeKey = "mode-\(url.lastPathComponent)"
         isPreviewMode = UserDefaults.standard.bool(forKey: modeKey)
