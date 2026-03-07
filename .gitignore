@@ -7,4 +7,5 @@ xcuserdata/
 *.swo
 supabase/.env
 supabase/.temp/
+supabase/venv/
 .playwright-mcp/
