@@ -86,6 +86,12 @@ struct EditorView: View {
                 }
                 .disabled(!noteState.canGoForward)
                 .help("Forward (⌘])")
+
+                Button(action: { noteState.toggleSharing() }) {
+                    Image(systemName: noteState.isNoteShared ? "globe" : "square.and.arrow.up")
+                }
+                .help(noteState.isNoteShared ? "Stop sharing" : "Share as web page")
+                .disabled(noteState.selectedNoteURL == nil)
             }
         }
     }

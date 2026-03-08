@@ -181,6 +181,12 @@ struct FileTreeView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(relative, forType: .string)
             }
+            Divider()
+            Button(noteState.isNoteShared && noteState.selectedNoteURL == fileNode.url
+                   ? "Stop Sharing" : "Share as Web Page") {
+                noteState.openNote(url: fileNode.url)
+                noteState.toggleSharing()
+            }
         }
     }
 

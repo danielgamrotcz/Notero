@@ -216,6 +216,56 @@ actor SupabaseService: SupabaseServiceProtocol {
         return try await request(method: "GET", table: "folder_deletions", params: qs, config: config)
     }
 
+    // MARK: - Web Sharing
+
+    func shareNote(path: String, config: Config) async -> String? {
+        let path = Self.nfc(path)
+        guard config.isValid else { return nil }
+        do {
+            let shareId = UUID().uuidString.lowercased()
+            let encoded = path.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? path
+            let qs = "?user_id=eq.\(config.userId)&path=eq.\(encoded)"
+            let body: [String: Any] = ["is_shared": true, "share_id": shareId]
+            _ = try await request(method: "PATCH", table: "notes", data: body, params: qs, config: config)
+            return shareId
+        } catch {
+            Log.general.warning("SupabaseService.shareNote failed: \(error)")
+            return nil
+        }
+    }
+
+    func unshareNote(path: String, config: Config) async -> Bool {
+        let path = Self.nfc(path)
+        guard config.isValid else { return false }
+        do {
+            let encoded = path.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? path
+            let qs = "?user_id=eq.\(config.userId)&path=eq.\(encoded)"
+            let body: [String: Any] = ["is_shared": false, "share_id": NSNull()]
+            _ = try await request(method: "PATCH", table: "notes", data: body, params: qs, config: config)
+            return true
+        } catch {
+            Log.general.warning("SupabaseService.unshareNote failed: \(error)")
+            return false
+        }
+    }
+
+    func fetchShareStatus(path: String, config: Config) async -> (isShared: Bool, shareId: String?) {
+        let path = Self.nfc(path)
+        guard config.isValid else { return (false, nil) }
+        do {
+            let encoded = path.addingPercentEncoding(withAllowedCharacters: CharacterSet()) ?? path
+            let qs = "?user_id=eq.\(config.userId)&path=eq.\(encoded)&select=is_shared,share_id"
+            let rows = try await request(method: "GET", table: "notes", params: qs, config: config)
+            guard let row = rows.first else { return (false, nil) }
+            let isShared = row["is_shared"] as? Bool ?? false
+            let shareId = row["share_id"] as? String
+            return (isShared, shareId)
+        } catch {
+            Log.general.warning("SupabaseService.fetchShareStatus failed: \(error)")
+            return (false, nil)
+        }
+    }
+
     // MARK: - NFC Migration
 
     func migratePathsToNFC(config: Config) async {

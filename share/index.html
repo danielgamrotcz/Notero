@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Notero — Shared Note</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+      media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+      media="(prefers-color-scheme: light)">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+<style>
+:root { color-scheme: light dark; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 20px 40px;
+}
+@media (prefers-color-scheme: dark) {
+    body { background: #1C1C1E; color: #F5F5F7; }
+    a { color: #6CB4EE; }
+    blockquote { border-color: #555; color: #aaa; }
+    code { background: #2C2C2E; }
+    pre { background: #2C2C2E; }
+    table { border-color: #444; }
+    th, td { border-color: #444; }
+    hr { border-color: #444; }
+    .notero-footer { color: #666; border-color: #444; }
+}
+@media (prefers-color-scheme: light) {
+    body { background: #FFFFFF; color: #1D1D1F; }
+    a { color: #0066CC; }
+    blockquote { border-color: #ddd; color: #666; }
+    code { background: #f4f4f4; }
+    pre { background: #f4f4f4; }
+    table { border-color: #ddd; }
+    th, td { border-color: #ddd; }
+    .notero-footer { color: #999; border-color: #ddd; }
+}
+h1, h2, h3 { font-weight: 600; margin-top: 1.5em; }
+h1 { font-size: 1.8em; }
+h2 { font-size: 1.4em; }
+h3 { font-size: 1.2em; }
+code { font-family: 'SF Mono', Menlo, monospace; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+pre { padding: 16px; border-radius: 8px; overflow-x: auto; }
+pre code { padding: 0; background: none; }
+blockquote { border-left: 3px solid; padding-left: 16px; margin-left: 0; font-style: italic; }
+img { max-width: 100%; border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid; padding: 8px 12px; text-align: left; }
+th { font-weight: 600; }
+hr { border: none; border-top: 1px solid; margin: 2em 0; }
+input[type="checkbox"] { margin-right: 6px; pointer-events: none; }
+
+.loading { text-align: center; padding: 80px 20px; }
+.error { text-align: center; padding: 80px 20px; }
+.error h2 { color: inherit; }
+.notero-footer {
+    margin-top: 3em;
+    padding-top: 1em;
+    border-top: 1px solid;
+    font-size: 12px;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+<div id="content">
+    <div class="loading">Loading note...</div>
+</div>
+<script>
+(function() {
+    const SUPABASE_URL = 'https://xctbmrncwimettotpgxf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjdGJtcm5jd2ltZXR0b3RwZ3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ0OTYxMjgsImV4cCI6MjA2MDA3MjEyOH0.VHLAzpfCMR0kRXmfXYqz57wEHPryOLnHLCT7RCBuBwk';
+
+    const params = new URLSearchParams(window.location.search);
+    const shareId = params.get('id');
+    const contentEl = document.getElementById('content');
+
+    if (!shareId) {
+        contentEl.innerHTML = '<div class="error"><h2>Note not found</h2><p>No share ID provided.</p></div>';
+        return;
+    }
+
+    // Configure marked to render wikilinks as plain text
+    const renderer = new marked.Renderer();
+    const originalLink = renderer.link.bind(renderer);
+    renderer.link = function(token) {
+        return originalLink(token);
+    };
+
+    marked.setOptions({
+        renderer: renderer,
+        highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+                return hljs.highlight(code, { language: lang }).value;
+            }
+            return hljs.highlightAuto(code).value;
+        },
+        gfm: true,
+        breaks: false
+    });
+
+    const url = SUPABASE_URL + '/rest/v1/notes?share_id=eq.' + encodeURIComponent(shareId)
+        + '&is_shared=eq.true&select=title,content,updated_at';
+
+    fetch(url, {
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+        }
+    })
+    .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    })
+    .then(function(rows) {
+        if (!rows || rows.length === 0) {
+            contentEl.innerHTML = '<div class="error"><h2>Note not found</h2><p>This note may have been unshared or does not exist.</p></div>';
+            document.title = 'Note not found — Notero';
+            return;
+        }
+
+        var note = rows[0];
+        document.title = (note.title || 'Untitled') + ' — Notero';
+
+        // Replace wikilinks with plain text before markdown rendering
+        var content = (note.content || '').replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, function(_, link, display) {
+            return display || link;
+        });
+
+        contentEl.innerHTML = marked.parse(content);
+
+        // Format date
+        var dateStr = '';
+        if (note.updated_at) {
+            var d = new Date(note.updated_at);
+            dateStr = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        var footer = document.createElement('div');
+        footer.className = 'notero-footer';
+        footer.textContent = 'Shared from Notero' + (dateStr ? ' · Updated ' + dateStr : '');
+        contentEl.appendChild(footer);
+
+        // Re-highlight code blocks
+        document.querySelectorAll('pre code').forEach(function(block) {
+            hljs.highlightElement(block);
+        });
+    })
+    .catch(function(err) {
+        contentEl.innerHTML = '<div class="error"><h2>Failed to load note</h2><p>' + err.message + '</p></div>';
+    });
+})();
+</script>
+</body>
+</html>

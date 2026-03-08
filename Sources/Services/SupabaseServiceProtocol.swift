@@ -17,4 +17,7 @@ protocol SupabaseServiceProtocol: Actor {
     func fetchFavourites(config: SupabaseService.Config) async throws -> [[String: Any]]
     func fetchNoteDeletions(since: Date, config: SupabaseService.Config) async throws -> [[String: Any]]
     func fetchFolderDeletions(since: Date, config: SupabaseService.Config) async throws -> [[String: Any]]
+    func shareNote(path: String, config: SupabaseService.Config) async -> String?
+    func unshareNote(path: String, config: SupabaseService.Config) async -> Bool
+    func fetchShareStatus(path: String, config: SupabaseService.Config) async -> (isShared: Bool, shareId: String?)
 }

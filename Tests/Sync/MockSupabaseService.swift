@@ -191,6 +191,37 @@ actor MockSupabaseService: SupabaseServiceProtocol {
         }
     }
 
+    // MARK: - Web Sharing
+
+    var shareNoteCalls: [String] = []
+    var unshareNoteCalls: [String] = []
+    var fetchShareStatusCalls: [String] = []
+
+    func shareNote(path: String, config: SupabaseService.Config) async -> String? {
+        shareNoteCalls.append(path)
+        guard !shouldFail else { return nil }
+        let shareId = UUID().uuidString.lowercased()
+        notes[path]?["is_shared"] = true
+        notes[path]?["share_id"] = shareId
+        return shareId
+    }
+
+    func unshareNote(path: String, config: SupabaseService.Config) async -> Bool {
+        unshareNoteCalls.append(path)
+        guard !shouldFail else { return false }
+        notes[path]?["is_shared"] = false
+        notes[path]?["share_id"] = nil
+        return true
+    }
+
+    func fetchShareStatus(path: String, config: SupabaseService.Config) async -> (isShared: Bool, shareId: String?) {
+        fetchShareStatusCalls.append(path)
+        guard !shouldFail else { return (false, nil) }
+        let isShared = notes[path]?["is_shared"] as? Bool ?? false
+        let shareId = notes[path]?["share_id"] as? String
+        return (isShared, shareId)
+    }
+
     // MARK: - Test Helpers
 
     func addRemoteNote(path: String, content: String, updatedAt: Date = Date()) {

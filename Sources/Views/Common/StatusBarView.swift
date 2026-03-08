@@ -49,6 +49,14 @@ struct StatusBarView: View {
                         }
                         .animation(.easeInOut(duration: 0.2), value: copiedID)
                 }
+                // Share indicator
+                if noteState.isNoteShared {
+                    Image(systemName: "globe")
+                        .foregroundColor(.green)
+                        .font(.system(size: 10))
+                        .help("Shared: \(noteState.shareURL)")
+                        .onTapGesture { noteState.copyShareLink() }
+                }
             }
 
             Spacer()
@@ -69,6 +77,12 @@ struct StatusBarView: View {
                 }
                 .frame(width: 14, height: 14)
                 .help("\(appState.dailyWordsWritten) / \(appState.dailyGoalTarget) words today")
+            }
+
+            // Share status
+            if !noteState.shareStatus.isEmpty {
+                Text(noteState.shareStatus)
+                    .foregroundColor(.green)
             }
 
             // reMarkable status

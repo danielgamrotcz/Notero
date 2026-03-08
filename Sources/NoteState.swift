@@ -17,6 +17,9 @@ final class NoteState: ObservableObject {
     @Published var isAIWorking: Bool = false
     @Published var remarkableStatus: String = ""
     @Published var isSendingToReMarkable: Bool = false
+    @Published var isNoteShared: Bool = false
+    @Published var shareURL: String = ""
+    @Published var shareStatus: String = ""
 
     /// Proportional scroll position (0.0–1.0) shared between editor and preview.
     /// Not @Published to avoid triggering SwiftUI re-renders on every scroll event.
@@ -67,6 +70,7 @@ final class NoteState: ObservableObject {
             appState.linkResolver.findBacklinks(for: url)
             persistLastOpenedNote(url: url)
             pushToHistory(url: url)
+            loadShareStatus()
         }
     }
 
@@ -265,6 +269,79 @@ final class NoteState: ObservableObject {
             return
         }
         openNote(url: url)
+    }
+
+    // MARK: - Web Sharing
+
+    private static let shareURLBase = "https://danielgamrot.github.io/notero-share/"
+
+    func toggleSharing() {
+        guard let appState = appState, let url = selectedNoteURL else { return }
+        let path = SupabaseService.relativePath(for: url, vaultURL: appState.vaultManager.vaultURL)
+        guard let config = appState.supabaseConfig else {
+            shareStatus = "Supabase not configured"
+            clearShareStatusAfterDelay()
+            return
+        }
+
+        Task {
+            if isNoteShared {
+                let ok = await appState.supabaseService.unshareNote(path: path, config: config)
+                if ok {
+                    isNoteShared = false
+                    shareURL = ""
+                    shareStatus = "Sharing disabled"
+                } else {
+                    shareStatus = "Failed to disable sharing"
+                }
+            } else {
+                if let shareId = await appState.supabaseService.shareNote(path: path, config: config) {
+                    isNoteShared = true
+                    shareURL = "\(Self.shareURLBase)?id=\(shareId)"
+                    copyShareLink()
+                    shareStatus = "Link copied"
+                } else {
+                    shareStatus = "Failed to share note"
+                }
+            }
+            clearShareStatusAfterDelay()
+        }
+    }
+
+    func copyShareLink() {
+        guard !shareURL.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(shareURL, forType: .string)
+    }
+
+    func loadShareStatus() {
+        guard let appState = appState, let url = selectedNoteURL else {
+            isNoteShared = false
+            shareURL = ""
+            return
+        }
+        let path = SupabaseService.relativePath(for: url, vaultURL: appState.vaultManager.vaultURL)
+        guard let config = appState.supabaseConfig else {
+            isNoteShared = false
+            shareURL = ""
+            return
+        }
+
+        Task {
+            let status = await appState.supabaseService.fetchShareStatus(path: path, config: config)
+            isNoteShared = status.isShared
+            if let shareId = status.shareId, status.isShared {
+                shareURL = "\(Self.shareURLBase)?id=\(shareId)"
+            } else {
+                shareURL = ""
+            }
+        }
+    }
+
+    private func clearShareStatusAfterDelay() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            self?.shareStatus = ""
+        }
     }
 
     // MARK: - AI
