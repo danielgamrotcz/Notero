@@ -273,7 +273,7 @@ final class NoteState: ObservableObject {
 
     // MARK: - Web Sharing
 
-    private static let shareURLBase = "https://danielgamrot.github.io/notero-share/"
+    private static let shareURLBase = "https://danielgamrotcz.github.io/notero-share/"
 
     func toggleSharing() {
         guard let appState = appState, let url = selectedNoteURL else { return }
