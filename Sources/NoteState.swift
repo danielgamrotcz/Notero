@@ -15,6 +15,8 @@ final class NoteState: ObservableObject {
     @Published var pendingSearchHighlight: String?
     @Published var aiStatus: String = ""
     @Published var isAIWorking: Bool = false
+    @Published var remarkableStatus: String = ""
+    @Published var isSendingToReMarkable: Bool = false
 
     /// Proportional scroll position (0.0–1.0) shared between editor and preview.
     /// Not @Published to avoid triggering SwiftUI re-renders on every scroll event.
@@ -324,6 +326,59 @@ final class NoteState: ObservableObject {
         }
     }
 
+    // MARK: - Send to reMarkable
+
+    func sendToReMarkable() {
+        guard let selectedURL = selectedNoteURL else { return }
+        guard !currentContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        isSendingToReMarkable = true
+        remarkableStatus = "Sending to reMarkable..."
+
+        let noteName = selectedURL.deletingPathExtension().lastPathComponent
+        let dateString = Date().formatted(.dateTime.month(.abbreviated).day().year())
+
+        let einkCSS = """
+        body { background: white !important; color: black !important; max-width: none !important;
+            font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
+            font-size: 11pt; line-height: 1.6; }
+        @page { margin: 2cm 1.8cm; size: A4; }
+        code { font-size: 9.5pt; background: #f0f0f0; }
+        pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 9pt; }
+        blockquote { border-left: 3px solid #333; color: #333; }
+        th { background: #e8e8e8; }
+        a { color: #000; text-decoration: underline; }
+        .notero-footer { margin-top: 2em; padding-top: 0.5em;
+            border-top: 1px solid #ccc; font-size: 8pt; color: #666; text-align: center; }
+        """
+
+        let firstLine = currentContent.components(separatedBy: .newlines).first?
+            .trimmingCharacters(in: .whitespaces) ?? ""
+        var titleHTML = ""
+        if !firstLine.hasPrefix("# ") {
+            titleHTML = "<h1>\(noteName)</h1>"
+        }
+
+        var html = MarkdownRenderer.renderHTML(from: currentContent)
+        html = html.replacingOccurrences(of: "</style>", with: "\(einkCSS)</style>")
+        html = html.replacingOccurrences(of: "<body>", with: "<body>\(titleHTML)")
+        html = html.replacingOccurrences(of: "</body>",
+            with: "<div class='notero-footer'>\(noteName) · Exported from Notero · \(dateString)</div></body>")
+
+        let config = WKWebViewConfiguration()
+        let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 595, height: 842), configuration: config)
+
+        let sanitizedName = noteName
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let uploader = ReMarkablePDFUploader(noteState: self, name: sanitizedName)
+        webView.navigationDelegate = uploader
+        objc_setAssociatedObject(webView, "remarkableUploader", uploader, .OBJC_ASSOCIATION_RETAIN)
+        webView.loadHTMLString(html, baseURL: nil)
+    }
+
     // MARK: - Export
 
     func exportAsPDF() {
@@ -510,6 +565,76 @@ final class NoteState: ObservableObject {
                 case .failure(let error):
                     Log.general.error("PDF export failed: \(error.localizedDescription)")
                 }
+            }
+        }
+    }
+
+    // swiftlint:disable:next nesting
+    private class ReMarkablePDFUploader: NSObject, WKNavigationDelegate {
+        weak var noteState: NoteState?
+        let name: String
+
+        init(noteState: NoteState, name: String) {
+            self.noteState = noteState
+            self.name = name
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            let config = WKPDFConfiguration()
+            webView.createPDF(configuration: config) { [weak self] result in
+                guard let self = self else { return }
+                switch result {
+                case .success(let data):
+                    self.uploadPDF(data: data)
+                case .failure(let error):
+                    DispatchQueue.main.async {
+                        self.noteState?.isSendingToReMarkable = false
+                        self.noteState?.remarkableStatus = "PDF generation failed"
+                        Log.general.error("reMarkable PDF failed: \(error.localizedDescription)")
+                        self.clearStatusAfterDelay()
+                    }
+                }
+            }
+        }
+
+        private func uploadPDF(data: Data) {
+            let tempDir = FileManager.default.temporaryDirectory
+            let pdfPath = tempDir.appendingPathComponent("\(name).pdf")
+
+            do {
+                try data.write(to: pdfPath)
+            } catch {
+                DispatchQueue.main.async {
+                    self.noteState?.isSendingToReMarkable = false
+                    self.noteState?.remarkableStatus = "Failed to write PDF"
+                    self.clearStatusAfterDelay()
+                }
+                return
+            }
+
+            Task {
+                do {
+                    try await ReMarkableService.shared.uploadPDF(at: pdfPath, name: name)
+                    try? FileManager.default.removeItem(at: pdfPath)
+                    await MainActor.run {
+                        self.noteState?.isSendingToReMarkable = false
+                        self.noteState?.remarkableStatus = "Sent to reMarkable"
+                        self.clearStatusAfterDelay()
+                    }
+                } catch {
+                    try? FileManager.default.removeItem(at: pdfPath)
+                    await MainActor.run {
+                        self.noteState?.isSendingToReMarkable = false
+                        self.noteState?.remarkableStatus = error.localizedDescription
+                        self.clearStatusAfterDelay()
+                    }
+                }
+            }
+        }
+
+        private func clearStatusAfterDelay() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                self?.noteState?.remarkableStatus = ""
             }
         }
     }

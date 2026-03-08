@@ -71,6 +71,12 @@ struct StatusBarView: View {
                 .help("\(appState.dailyWordsWritten) / \(appState.dailyGoalTarget) words today")
             }
 
+            // reMarkable status
+            if !noteState.remarkableStatus.isEmpty {
+                Text(noteState.remarkableStatus)
+                    .foregroundColor(noteState.isSendingToReMarkable ? .orange : .green)
+            }
+
             // AI status
             if !noteState.aiStatus.isEmpty {
                 Text(noteState.aiStatus)

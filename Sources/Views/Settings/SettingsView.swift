@@ -24,6 +24,11 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                 }
+
+            ReMarkableSettingsView()
+                .tabItem {
+                    Label("reMarkable", systemImage: "tablet")
+                }
         }
         .frame(width: 520, height: 620)
     }

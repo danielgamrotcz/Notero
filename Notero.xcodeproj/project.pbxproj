@@ -79,6 +79,8 @@
 		BB0000000000000000000007 /* DirtyStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000017 /* DirtyStateTests.swift */; };
 		BB0000000000000000000008 /* FavoritesSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000018 /* FavoritesSyncTests.swift */; };
 		BB0000000000000000000009 /* SyncEdgeCaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000019 /* SyncEdgeCaseTests.swift */; };
+		CC0000000000000000000001 /* ReMarkableService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000011 /* ReMarkableService.swift */; };
+		CC0000000000000000000002 /* ReMarkableSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000012 /* ReMarkableSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -187,6 +189,8 @@
 		BB0000000000000000000017 /* DirtyStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirtyStateTests.swift; sourceTree = "<group>"; };
 		BB0000000000000000000018 /* FavoritesSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesSyncTests.swift; sourceTree = "<group>"; };
 		BB0000000000000000000019 /* SyncEdgeCaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEdgeCaseTests.swift; sourceTree = "<group>"; };
+		CC0000000000000000000011 /* ReMarkableService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReMarkableService.swift; sourceTree = "<group>"; };
+		CC0000000000000000000012 /* ReMarkableSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReMarkableSettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -343,6 +347,7 @@
 			children = (
 				5E6356A7CDAD3E5BBFBF45BD /* AISettingsView.swift */,
 				BB01C3CE1E2BC60F44A95CC4 /* GeneralSettingsView.swift */,
+				CC0000000000000000000012 /* ReMarkableSettingsView.swift */,
 				6A07863B21335AC6A457EC55 /* SettingsView.swift */,
 				AA0000000000000000000012 /* SyncSettingsView.swift */,
 			);
@@ -380,6 +385,7 @@
 				D70BCE498DE832A0E8F16A99 /* NoteHistoryService.swift */,
 				35471D23B8D9A66BDC42FAFF /* NoteMetadataService.swift */,
 				CACC125BE8A7962D222CC6A4 /* OllamaService.swift */,
+				CC0000000000000000000011 /* ReMarkableService.swift */,
 				DBB443D91BBB58E90F2EAD6E /* SearchService.swift */,
 				A1A6FAAADC44F5E16E5882DA /* SemanticSearchService.swift */,
 				AA0000000000000000000011 /* SupabaseService.swift */,
@@ -579,6 +585,8 @@
 				083C34FD0C6D7DBDE3D21116 /* NoteroApp.swift in Sources */,
 				D74F1A44CD1C8B32CFCD5711 /* NoteroIntents.swift in Sources */,
 				655502B38047DC910A6DAB26 /* OllamaService.swift in Sources */,
+				CC0000000000000000000001 /* ReMarkableService.swift in Sources */,
+				CC0000000000000000000002 /* ReMarkableSettingsView.swift in Sources */,
 				2319639CC66F2AF8D0EE7A8D /* SearchIndex.swift in Sources */,
 				A2B53CE1392FA81F0557242F /* SearchService.swift in Sources */,
 				38AD31311BDCE50D8FEB820C /* SemanticSearchService.swift in Sources */,

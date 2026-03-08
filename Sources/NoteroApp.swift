@@ -107,6 +107,14 @@ struct NoteroApp: App {
 
                 Divider()
 
+                Button("Send to reMarkable") {
+                    noteState?.sendToReMarkable()
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .disabled(noteState?.selectedNoteURL == nil || noteState?.isSendingToReMarkable == true)
+
+                Divider()
+
                 Button("Copy Note ID") {
                     guard let url = noteState?.selectedNoteURL else { return }
                     let meta = NoteMetadataService.shared.metadata(for: url)
