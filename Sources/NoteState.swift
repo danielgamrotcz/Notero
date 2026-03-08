@@ -374,6 +374,7 @@ final class NoteState: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         let uploader = ReMarkablePDFUploader(noteState: self, name: sanitizedName)
+        uploader.webView = webView
         webView.navigationDelegate = uploader
         objc_setAssociatedObject(webView, "remarkableUploader", uploader, .OBJC_ASSOCIATION_RETAIN)
         webView.loadHTMLString(html, baseURL: nil)
@@ -573,6 +574,8 @@ final class NoteState: ObservableObject {
     private class ReMarkablePDFUploader: NSObject, WKNavigationDelegate {
         weak var noteState: NoteState?
         let name: String
+        /// Strong ref to keep WKWebView alive until PDF generation completes.
+        var webView: WKWebView?
 
         init(noteState: NoteState, name: String) {
             self.noteState = noteState
@@ -583,6 +586,7 @@ final class NoteState: ObservableObject {
             let config = WKPDFConfiguration()
             webView.createPDF(configuration: config) { [weak self] result in
                 guard let self = self else { return }
+                self.webView = nil
                 switch result {
                 case .success(let data):
                     self.uploadPDF(data: data)

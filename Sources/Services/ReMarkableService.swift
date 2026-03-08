@@ -52,9 +52,12 @@ actor ReMarkableService {
     // MARK: - Authentication
 
     func isAuthenticated() -> Bool {
+        let home = NSHomeDirectory()
         let configPaths = [
-            "\(NSHomeDirectory())/.rmapi",
-            "\(NSHomeDirectory())/.config/rmapi/.rmapi"
+            "\(home)/Library/Application Support/rmapi/rmapi.conf",
+            "\(home)/.rmapi",
+            "\(home)/.config/rmapi/.rmapi",
+            "\(home)/.config/rmapi/rmapi.conf"
         ]
         return configPaths.contains { FileManager.default.fileExists(atPath: $0) }
     }
