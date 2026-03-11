@@ -76,6 +76,9 @@ actor ReMarkableService {
         // Ensure /Notero folder exists (exit code 1 if already exists — OK)
         _ = shell("\(binary) mkdir \(remarkableFolder)")
 
+        // Remove existing file so re-upload works (exit code 1 if not found — OK)
+        _ = shell("\(binary) rm \"\(remarkableFolder)/\(name)\"")
+
         let result = shell("\(binary) put \"\(pdfPath.path)\" \"\(remarkableFolder)\"")
 
         if result.exitCode != 0 {
