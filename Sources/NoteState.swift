@@ -445,12 +445,34 @@ final class NoteState: ObservableObject {
         let dateString = Date().formatted(.dateTime.month(.abbreviated).day().year())
 
         let paginationCSS = """
-        h1, h2, h3, h4, h5, h6 { break-after: avoid; }
+        h1, h2, h3, h4, h5, h6 {
+            break-after: avoid;
+            break-inside: avoid;
+        }
+        h1::after, h2::after, h3::after, h4::after, h5::after, h6::after {
+            content: "";
+            display: block;
+            height: 8em;
+            margin-bottom: -8em;
+        }
+        p:has(> strong:first-child) {
+            break-after: avoid;
+            break-inside: avoid;
+        }
+        p:has(> strong:first-child)::after {
+            content: "";
+            display: block;
+            height: 4em;
+            margin-bottom: -4em;
+        }
+        p + ul, p + ol { break-before: avoid; }
         li { break-inside: avoid; }
-        ul, ol { break-inside: avoid-page; }
         pre, blockquote { break-inside: avoid; }
         p { orphans: 3; widows: 3; }
         table { break-inside: avoid; }
+        hr { break-before: avoid; break-after: avoid; }
+        *:has(+ hr) { break-after: avoid; }
+        .notero-footer { break-before: avoid; }
         """
 
         let deviceCSS: String
@@ -460,7 +482,6 @@ final class NoteState: ObservableObject {
             body { background: white !important; color: black !important; max-width: none !important;
                 font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
                 font-size: 11pt; line-height: 1.6; }
-            @page { margin: 2cm 1.8cm; size: A4; }
             code { font-size: 9.5pt; background: #f0f0f0; }
             pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 9pt; }
             """
@@ -469,7 +490,6 @@ final class NoteState: ObservableObject {
             body { background: white !important; color: black !important; max-width: none !important;
                 font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
                 font-size: 10pt; line-height: 1.5; }
-            @page { margin: 12pt 14pt; size: 260pt 463pt; }
             code { font-size: 8pt; background: #f0f0f0; }
             pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 7.5pt; }
             """
@@ -713,6 +733,8 @@ final class NoteState: ObservableObject {
         let device: ReMarkableDevice
         /// Strong ref to keep WKWebView alive until PDF generation completes.
         var webView: WKWebView?
+        private var pdfURL: URL?
+        private var hiddenWindow: NSWindow?
 
         init(noteState: NoteState, name: String, device: ReMarkableDevice) {
             self.noteState = noteState
@@ -721,23 +743,70 @@ final class NoteState: ObservableObject {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            let config = WKPDFConfiguration()
-            config.rect = CGRect(x: 0, y: 0, width: device.pageWidth, height: device.pageHeight)
-            webView.createPDF(configuration: config) { [weak self] result in
-                guard let self = self else { return }
-                self.webView = nil
-                switch result {
-                case .success(let data):
-                    self.uploadPDF(data: data)
-                case .failure(let error):
-                    DispatchQueue.main.async {
-                        self.noteState?.isSendingToReMarkable = false
-                        self.noteState?.remarkableStatus = "PDF generation failed"
-                        Log.general.error("reMarkable PDF failed: \(error.localizedDescription)")
-                        self.clearStatusAfterDelay()
-                    }
-                }
+            let printInfo = NSPrintInfo()
+            printInfo.paperSize = NSSize(width: device.pageWidth, height: device.pageHeight)
+            switch device {
+            case .paperPro:
+                printInfo.topMargin = 56.69
+                printInfo.bottomMargin = 56.69
+                printInfo.leftMargin = 51.02
+                printInfo.rightMargin = 51.02
+            case .paperProMove:
+                printInfo.topMargin = 12
+                printInfo.bottomMargin = 12
+                printInfo.leftMargin = 14
+                printInfo.rightMargin = 14
             }
+            printInfo.isHorizontallyCentered = false
+            printInfo.isVerticallyCentered = false
+
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".pdf")
+            self.pdfURL = url
+            printInfo.jobDisposition = .save
+            printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = url
+
+            let printOp = webView.printOperation(with: printInfo)
+            printOp.showsPrintPanel = false
+            printOp.showsProgressPanel = false
+
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+                styleMask: [], backing: .buffered, defer: true
+            )
+            window.orderOut(nil)
+            self.hiddenWindow = window
+
+            printOp.runModal(
+                for: window,
+                delegate: self,
+                didRun: #selector(printOperationDidRun(_:success:contextInfo:)),
+                contextInfo: nil
+            )
+        }
+
+        @objc func printOperationDidRun(
+            _ op: NSPrintOperation,
+            success: Bool,
+            contextInfo: UnsafeMutableRawPointer?
+        ) {
+            hiddenWindow = nil
+            webView = nil
+
+            guard success, let pdfURL = pdfURL,
+                  let data = try? Data(contentsOf: pdfURL) else {
+                self.pdfURL = nil
+                DispatchQueue.main.async {
+                    self.noteState?.isSendingToReMarkable = false
+                    self.noteState?.remarkableStatus = "PDF generation failed"
+                    self.clearStatusAfterDelay()
+                }
+                return
+            }
+
+            try? FileManager.default.removeItem(at: pdfURL)
+            self.pdfURL = nil
+            uploadPDF(data: data)
         }
 
         private func uploadPDF(data: Data) {
