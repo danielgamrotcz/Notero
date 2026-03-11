@@ -5,6 +5,7 @@ struct SidebarView: View {
     @EnvironmentObject var noteState: NoteState
     @State private var searchText = ""
     @State private var focusedSearchResultIndex: Int = -1
+    @State private var dropTargetFolderURL: URL?
     @FocusState private var isSearchFieldFocused: Bool
 
     var body: some View {
@@ -318,9 +319,15 @@ struct SidebarView: View {
         } label: {
             Text("Inbox")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundColor(dropTargetFolderURL == appState.vaultManager.vaultURL ? .accentColor : .secondary)
                 .textCase(.uppercase)
         }
+        .onDrop(of: [.plainText], delegate: FolderDropDelegate(
+            folderURL: appState.vaultManager.vaultURL,
+            dropTargetFolderURL: $dropTargetFolderURL,
+            appState: appState,
+            noteState: noteState
+        ))
         .padding(.bottom, 4)
     }
 

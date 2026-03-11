@@ -3,9 +3,19 @@ import SwiftUI
 struct ReMarkableSettingsView: View {
     @State private var isConnected = false
     @State private var binaryPath = "Not found"
+    @AppStorage("remarkableDevice") private var remarkableDevice: String = ReMarkableDevice.paperPro.rawValue
 
     var body: some View {
         Form {
+            Section("Device") {
+                Picker("Model", selection: $remarkableDevice) {
+                    ForEach(ReMarkableDevice.allCases, id: \.rawValue) { device in
+                        Text(device.displayName).tag(device.rawValue)
+                    }
+                }
+                .pickerStyle(.radioGroup)
+            }
+
             Section("Connection") {
                 HStack {
                     Text("rmapi binary:")

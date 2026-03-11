@@ -2,6 +2,32 @@ import SwiftUI
 import Combine
 import WebKit
 
+enum ReMarkableDevice: String, CaseIterable {
+    case paperPro = "paperPro"
+    case paperProMove = "paperProMove"
+
+    var displayName: String {
+        switch self {
+        case .paperPro: return "Paper Pro (10.3\")"
+        case .paperProMove: return "Paper Pro Move (7.3\")"
+        }
+    }
+
+    var pageWidth: CGFloat {
+        switch self {
+        case .paperPro: return 595
+        case .paperProMove: return 260
+        }
+    }
+
+    var pageHeight: CGFloat {
+        switch self {
+        case .paperPro: return 842
+        case .paperProMove: return 463
+        }
+    }
+}
+
 @MainActor
 final class NoteState: ObservableObject {
     @Published var selectedNoteURL: URL?
@@ -409,19 +435,49 @@ final class NoteState: ObservableObject {
         guard let selectedURL = selectedNoteURL else { return }
         guard !currentContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
+        let deviceRaw = UserDefaults.standard.string(forKey: "remarkableDevice") ?? ReMarkableDevice.paperPro.rawValue
+        let device = ReMarkableDevice(rawValue: deviceRaw) ?? .paperPro
+
         isSendingToReMarkable = true
         remarkableStatus = "Sending to reMarkable..."
 
         let noteName = selectedURL.deletingPathExtension().lastPathComponent
         let dateString = Date().formatted(.dateTime.month(.abbreviated).day().year())
 
+        let paginationCSS = """
+        h1, h2, h3, h4, h5, h6 { break-after: avoid; }
+        li { break-inside: avoid; }
+        ul, ol { break-inside: avoid-page; }
+        pre, blockquote { break-inside: avoid; }
+        p { orphans: 3; widows: 3; }
+        table { break-inside: avoid; }
+        """
+
+        let deviceCSS: String
+        switch device {
+        case .paperPro:
+            deviceCSS = """
+            body { background: white !important; color: black !important; max-width: none !important;
+                font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
+                font-size: 11pt; line-height: 1.6; }
+            @page { margin: 2cm 1.8cm; size: A4; }
+            code { font-size: 9.5pt; background: #f0f0f0; }
+            pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 9pt; }
+            """
+        case .paperProMove:
+            deviceCSS = """
+            body { background: white !important; color: black !important; max-width: none !important;
+                font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
+                font-size: 10pt; line-height: 1.5; }
+            @page { margin: 12pt 14pt; size: 260pt 463pt; }
+            code { font-size: 8pt; background: #f0f0f0; }
+            pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 7.5pt; }
+            """
+        }
+
         let einkCSS = """
-        body { background: white !important; color: black !important; max-width: none !important;
-            font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
-            font-size: 11pt; line-height: 1.6; }
-        @page { margin: 2cm 1.8cm; size: A4; }
-        code { font-size: 9.5pt; background: #f0f0f0; }
-        pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 9pt; }
+        \(deviceCSS)
+        \(paginationCSS)
         blockquote { border-left: 3px solid #333; color: #333; }
         th { background: #e8e8e8; }
         a { color: #000; text-decoration: underline; }
@@ -443,14 +499,17 @@ final class NoteState: ObservableObject {
             with: "<div class='notero-footer'>\(noteName) · Exported from Notero · \(dateString)</div></body>")
 
         let config = WKWebViewConfiguration()
-        let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 595, height: 842), configuration: config)
+        let webView = WKWebView(
+            frame: NSRect(x: 0, y: 0, width: device.pageWidth, height: device.pageHeight),
+            configuration: config
+        )
 
         let sanitizedName = noteName
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let uploader = ReMarkablePDFUploader(noteState: self, name: sanitizedName)
+        let uploader = ReMarkablePDFUploader(noteState: self, name: sanitizedName, device: device)
         uploader.webView = webView
         webView.navigationDelegate = uploader
         objc_setAssociatedObject(webView, "remarkableUploader", uploader, .OBJC_ASSOCIATION_RETAIN)
@@ -651,16 +710,19 @@ final class NoteState: ObservableObject {
     private class ReMarkablePDFUploader: NSObject, WKNavigationDelegate {
         weak var noteState: NoteState?
         let name: String
+        let device: ReMarkableDevice
         /// Strong ref to keep WKWebView alive until PDF generation completes.
         var webView: WKWebView?
 
-        init(noteState: NoteState, name: String) {
+        init(noteState: NoteState, name: String, device: ReMarkableDevice) {
             self.noteState = noteState
             self.name = name
+            self.device = device
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             let config = WKPDFConfiguration()
+            config.rect = CGRect(x: 0, y: 0, width: device.pageWidth, height: device.pageHeight)
             webView.createPDF(configuration: config) { [weak self] result in
                 guard let self = self else { return }
                 self.webView = nil
