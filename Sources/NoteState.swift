@@ -480,29 +480,32 @@ final class NoteState: ObservableObject {
         case .paperPro:
             deviceCSS = """
             body { background: white !important; color: black !important; max-width: none !important;
+                padding: 0 !important; margin: 0 !important;
                 font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
-                font-size: 11pt; line-height: 1.6; }
-            code { font-size: 9.5pt; background: #f0f0f0; }
-            pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 9pt; }
+                font-size: 16pt; line-height: 1.6; }
+            code { font-size: 14pt; background: #f0f0f0; }
+            pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 13pt; }
             """
         case .paperProMove:
             deviceCSS = """
             body { background: white !important; color: black !important; max-width: none !important;
+                padding: 0 !important; margin: 0 !important;
                 font-family: -apple-system, 'Helvetica Neue', Helvetica, sans-serif;
-                font-size: 10pt; line-height: 1.5; }
-            code { font-size: 8pt; background: #f0f0f0; }
-            pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 7.5pt; }
+                font-size: 15pt; line-height: 1.5; }
+            code { font-size: 12pt; background: #f0f0f0; }
+            pre { background: #f5f5f5; border: 1px solid #ddd; font-size: 11pt; }
             """
         }
 
         let einkCSS = """
         \(deviceCSS)
         \(paginationCSS)
+        h1:first-child, h2:first-child, h3:first-child { margin-top: 0.3em; }
         blockquote { border-left: 3px solid #333; color: #333; }
         th { background: #e8e8e8; }
         a { color: #000; text-decoration: underline; }
         .notero-footer { margin-top: 2em; padding-top: 0.5em;
-            border-top: 1px solid #ccc; font-size: 8pt; color: #666; text-align: center; }
+            border-top: 1px solid #ccc; font-size: 12pt; color: #666; text-align: center; }
         """
 
         let firstLine = currentContent.components(separatedBy: .newlines).first?
