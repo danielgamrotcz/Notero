@@ -445,11 +445,12 @@ final class NoteState: ObservableObject {
         let dateString = Date().formatted(.dateTime.month(.abbreviated).day().year())
 
         let paginationCSS = """
+        h2 { break-before: page; }
         h1, h2, h3, h4, h5, h6 {
             break-after: avoid;
             break-inside: avoid;
         }
-        h1::after, h2::after, h3::after, h4::after, h5::after, h6::after {
+        h1::after, h3::after, h4::after, h5::after, h6::after {
             content: "";
             display: block;
             height: 8em;
